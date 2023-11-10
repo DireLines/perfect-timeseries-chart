@@ -1,1 +1,1 @@
-export * from './TimeSeriesChart';
+export * from "./TimeSeriesChart"

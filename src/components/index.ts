@@ -1,3 +1,3 @@
 // make sure you import all components into this file
 
-export * from './TimeSeriesChart';
+export * from "./TimeSeriesChart"
