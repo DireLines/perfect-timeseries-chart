@@ -1,18 +1,10 @@
 {
-  "name": "sixfootsixdesigns-react-library-boilerplate",
+  "name": "perfect-timeseries-chart",
   "license": "MIT",
   "version": "0.0.0",
   "private": false,
-  "description": "React Typescript Library Boilerplate",
-  "author": "James Olson",
-  "homepage": "https://github.com/sixfootsixdesigns/React-Library-Boilerplate",
-  "bugs": {
-    "url": "https://github.com/sixfootsixdesigns/React-Library-Boilerplate/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sixfootsixdesigns/React-Library-Boilerplate.git"
-  },
+  "description": "Perfect Timeseries Chart",
+  "author": "Nathaniel Saxe",
   "scripts": {
     "build": "yarn clean; rollup -c",
     "clean": "rimraf dist",
@@ -96,51 +88,5 @@
   "engines": {
     "node": ">=12.0.0",
     "yarn": "^1.5"
-  },
-  "release": {
-    "branches": [
-      "master",
-      "next"
-    ],
-    "preset": "conventionalcommits",
-    "plugins": [
-      [
-        "@semantic-release/commit-analyzer",
-        {
-          "releaseRules": [
-            {
-              "type": "revert",
-              "release": "patch"
-            },
-            {
-              "type": "build",
-              "release": "patch"
-            }
-          ]
-        }
-      ],
-      "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/changelog",
-        {
-          "changelogTitle": "# Changelog"
-        }
-      ],
-      [
-        "@semantic-release/npm",
-        {
-          "pkgRoot": "dist"
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "message": "chore(release): ${nextRelease.version} [skip ci]",
-          "assets": [
-            "CHANGELOG.md"
-          ]
-        }
-      ]
-    ]
   }
 }
