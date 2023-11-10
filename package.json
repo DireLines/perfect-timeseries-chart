@@ -2,7 +2,6 @@
   "name": "perfect-timeseries-chart",
   "license": "MIT",
   "version": "0.0.0",
-  "private": false,
   "description": "Perfect Timeseries Chart",
   "author": "Nathaniel Saxe",
   "scripts": {
