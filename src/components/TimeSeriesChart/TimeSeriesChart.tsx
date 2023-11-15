@@ -1,5 +1,5 @@
 import React, { useRef } from "react"
-import { mapObjIndexed, mergeWith } from "ramda"
+import { mapObjIndexed, mergeWith, sum } from "ramda"
 import { useResize } from "./useResize"
 import { colorHash } from "./colorHash"
 
@@ -167,27 +167,40 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const width = 800
   const height = 300
   const barWidth = Math.ceil(width / displayData.length)
+  const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
+  const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * height)
   return (
-    <svg width={width} height={height}>
-      {displayData.map((point, index) => (
-        <g key={index} transform={`translate(${index * barWidth}, 0)`}>
-          <rect
-            y={height - point.counts["red"] * 10} // Adjust the y position based on value
-            width={Math.ceil(barWidth * 0.95)}
-            height={point.counts["red"] * 10} // Scale the height based on the value
-            fill={getDisplayColor(columnName, "red")} // Set the color of the bar
-          />
-          <text
-            x={barWidth / 2}
-            y={height - 5} // Position the text at the bottom
-            textAnchor="middle"
-            fontSize="10"
-            fill="black"
-          >
-            {new Date(point.time).toLocaleString()}
-          </text>
-        </g>
-      ))}
+    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+      {displayData.map((point, index) => {
+        const rects: any[] = []
+        let totalHeight = 0
+        for (const k in point.counts) {
+          const currentRectHeight = getPixelHeight(point.counts[k])
+          rects.push(
+            <rect
+              y={height - (currentRectHeight + totalHeight)} // Adjust the y position based on value
+              width={Math.ceil(barWidth * 0.95)}
+              height={currentRectHeight} // Scale the height based on the value
+              fill={getDisplayColor(columnName, k)} // Set the color of the bar
+            />
+          )
+          totalHeight += currentRectHeight
+        }
+        return (
+          <g key={index} transform={`translate(${index * barWidth}, 0)`}>
+            {rects}
+            <text
+              x={barWidth / 2}
+              y={height - 5} // Position the text at the bottom
+              textAnchor="middle"
+              fontSize="10"
+              fill="black"
+            >
+              {new Date(point.time).toLocaleString()}
+            </text>
+          </g>
+        )
+      })}
     </svg>
   )
 }
@@ -195,7 +208,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   const ref = useRef(null)
   const chartProps = { ...defaultProps(data), ...rest }
   return (
-    <div ref={ref} width={"100%"}>
+    <div ref={ref} style={{ width: "100%", height: "100%" }}>
       {createSvg(chartProps)}
       {/* {displayData.map((item) => (
         <li>
