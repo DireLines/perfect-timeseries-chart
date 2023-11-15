@@ -1,5 +1,6 @@
 import React from "react"
-import TimeSeriesChart from "perfect-timeseries-chart"
+import ReactDOM from "react-dom"
+import TimeSeriesChart from "../dist"
 
 const chart = () => {
   const second = 1000
@@ -43,3 +44,5 @@ const chart = () => {
   //everything else should have sane defaults
   return <TimeSeriesChart data={data} />
 }
+
+ReactDOM.render(chart, document.getElementById("app"))
