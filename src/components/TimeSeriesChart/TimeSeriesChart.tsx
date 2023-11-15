@@ -1,4 +1,5 @@
 import React from "react"
+import { mapObjIndexed } from "ramda"
 // import colorHash from "./colorHash"
 
 // type RGB = `rgb(${number}, ${number}, ${number})`;
@@ -103,9 +104,23 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartProps = (data) => {
   }
 }
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children }) => {
+  const block = "█"
   return (
     <div>
-      {JSON.stringify(data, null, 2)}
+      {data.map((item) => (
+        <li>
+          {Object.values(
+            mapObjIndexed(
+              (v, k) => (
+                <span color={k} displayMode="inline">
+                  {block.repeat(v)}
+                </span>
+              ),
+              item.counts
+            )
+          )}
+        </li>
+      ))}
       <br />
       {JSON.stringify(defaultProps(data), null, 2)}
       <br />
