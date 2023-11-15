@@ -1,5 +1,5 @@
 import React from "react"
-import { mapObjIndexed } from "ramda"
+import { mapObjIndexed, mergeWith } from "ramda"
 import { colorHash } from "./colorHash.js"
 
 // type RGB = `rgb(${number}, ${number}, ${number})`;
@@ -53,31 +53,33 @@ export type NavigationOptions = {
 }
 export type TimeSeriesData = TimeSeries | TimeSeriesMultiValue | TimeSeriesPointCloud
 
-export type TimeSeriesChartProps = {
+export type TimeSeriesChartData = {
   data: TimeSeries
-  start?: Time
-  end?: Time
-  active?: boolean
-  children?: any
-  binSizeMs?: number
-  columnName?: string
-  displayMode?: DisplayMode
-  navigation?: NavigationOptions
-  presetColors?: { [key: string]: string }
-  logLevelPresetColors?: boolean
-  textures?: boolean
+  start: Time
+  end: Time
+  active: boolean
+  children: any
+  binSizeMs: number
+  columnName: string
+  displayMode: DisplayMode
+  navigation: NavigationOptions
+  presetColors: { [key: string]: string }
+  logLevelPresetColors: boolean
+  textures: boolean
 }
 
-// const logLevelColors = {
-//   info: "#82dd55",
-//   debug: "#82dd55",
-//   warn: "#edb95e",
-//   warning: "#edb95e",
-//   error: "#e23636",
-//   critical: "#ff0000",
-//   fatal: "#ff0000",
-//   emergency: "#ff0000",
-// }
+export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
+
+const logLevelColors = {
+  info: "#82dd55",
+  debug: "#82dd55",
+  warn: "#edb95e",
+  warning: "#edb95e",
+  error: "#e23636",
+  critical: "#ff0000",
+  fatal: "#ff0000",
+  emergency: "#ff0000",
+}
 
 const commonHtmlColors = [
   "aqua",
@@ -101,37 +103,72 @@ const commonHtmlColors = [
 const getDisplayColor: (column: string, value: string) => string = (
   column: string,
   value: string
-) => (commonHtmlColors.includes(value) ? value : colorHash(`${column}:${value}`))
+) => {
+  if (commonHtmlColors.includes(value)) {
+    return value
+  }
+  return colorHash(`${column}:${value}`)
+}
 
-const min = (list: [number]) => Math.min(...list)
-const max = (list: [number]) => Math.max(...list)
+const min = Math.min
+const max = Math.max
 
-const defaultProps: (TimeSeriesData) => TimeSeriesChartProps = (data) => {
-  const dataMin = min(data.map(({ time }) => time))
-  const dataMax = max(data.map(({ time }) => time))
+const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
+  const dataMin = min(...data.map(({ time }) => time))
+  const dataMax = max(...data.map(({ time }) => time))
   return {
     data,
     start: dataMin,
     end: dataMax,
     active: true,
     columnName: "default",
-    binSize: (dataMax - dataMin) / 25,
+    binSizeMs: (dataMax - dataMin) / 25,
     displayMode: DisplayMode.StackedBar,
     navigation: { scrollToZoom: true, clickAndDragToZoom: true, clickToToggle: true },
     presetColors: {},
     logLevelPresetColors: true,
     textures: false,
+    children: null,
+  }
+}
+const range = (start: number, end: number, step: number) => {
+  let s = min(start, end)
+  let e = max(start, end)
+  const result: number[] = []
+  let current = s
+  while (current <= e) {
+    result.push(current)
+    current += step
+  }
+  return result
+}
+
+const toEpochMs = (date: Time) => {
+  if (typeof date === "number") {
+    return date
+  } else {
+    return Date.parse(date.toString())
   }
 }
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
-  const props = { ...defaultProps(data), ...rest }
-  const { columnName } = props
+  const chartProps = { ...defaultProps(data), ...rest }
+  const { columnName, binSizeMs, start, end } = chartProps
+  const times = range(toEpochMs(start), toEpochMs(end), binSizeMs)
+  const displayData = times.map((timestamp) => {
+    const bucketStart = timestamp
+    const bucketEnd = timestamp + binSizeMs
+    const bucketData = data
+      .filter((item) => bucketStart <= item.time && item.time < bucketEnd)
+      .map((item) => item.counts)
+      .reduce((curr, next) => mergeWith((a, b) => a + b, curr, next), {})
+    return { time: timestamp, counts: bucketData }
+  })
   const block = "█"
   return (
     <div>
-      {data.map((item) => (
+      {displayData.map((item) => (
         <li>
-          {new Date(item.time).toLocaleString()}:
+          <span>{new Date(item.time).toLocaleString()}: </span>
           {Object.values(
             mapObjIndexed(
               (v, k) => (
@@ -144,9 +181,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
           )}
         </li>
       ))}
-      <br />
-      {JSON.stringify(defaultProps(data), null, 2)}
-      <br />
       {children}
     </div>
   )
