@@ -1,6 +1,7 @@
-import React from "react"
+import React, { useRef } from "react"
 import { mapObjIndexed, mergeWith } from "ramda"
-import { colorHash } from "./colorHash.js"
+import { useResize } from "./useResize"
+import { colorHash } from "./colorHash"
 
 // type RGB = `rgb(${number}, ${number}, ${number})`;
 // type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
@@ -150,29 +151,59 @@ const toEpochMs = (date: Time) => {
     return Date.parse(date.toString())
   }
 }
-export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
-  const chartProps = { ...defaultProps(data), ...rest }
-  const { columnName, binSizeMs, start, end } = chartProps
+const createSvg = (chartProps: TimeSeriesChartData) => {
+  const { data, columnName, binSizeMs, start, end } = chartProps
   const times = range(toEpochMs(start), toEpochMs(end), binSizeMs)
   const displayData = times.map((timestamp) => {
     const bucketStart = timestamp
     const bucketEnd = timestamp + binSizeMs
     const bucketData = data
-      .filter((item) => bucketStart <= item.time && item.time < bucketEnd)
+      .filter((item) => bucketStart <= toEpochMs(item.time) && toEpochMs(item.time) < bucketEnd)
       .map((item) => item.counts)
       .reduce((curr, next) => mergeWith((a, b) => a + b, curr, next), {})
     return { time: timestamp, counts: bucketData }
   })
-  const block = "█"
+  // SVG dimensions
+  const width = 800
+  const height = 300
+  const barWidth = Math.ceil(width / displayData.length)
   return (
-    <div>
-      {displayData.map((item) => (
+    <svg width={width} height={height}>
+      {displayData.map((point, index) => (
+        <g key={index} transform={`translate(${index * barWidth}, 0)`}>
+          <rect
+            y={height - point.counts["red"] * 10} // Adjust the y position based on value
+            width={Math.ceil(barWidth * 0.95)}
+            height={point.counts["red"] * 10} // Scale the height based on the value
+            fill={getDisplayColor(columnName, "red")} // Set the color of the bar
+          />
+          <text
+            x={barWidth / 2}
+            y={height - 5} // Position the text at the bottom
+            textAnchor="middle"
+            fontSize="10"
+            fill="black"
+          >
+            {new Date(point.time).toLocaleString()}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
+  const ref = useRef(null)
+  const chartProps = { ...defaultProps(data), ...rest }
+  return (
+    <div ref={ref} width={"100%"}>
+      {createSvg(chartProps)}
+      {/* {displayData.map((item) => (
         <li>
           <span>{new Date(item.time).toLocaleString()}: </span>
           {Object.values(
             mapObjIndexed(
               (v, k) => (
-                <span color={getDisplayColor(columnName ?? "default", k)} displayMode="inline">
+                <span color={getDisplayColor(columnName, k)} displayMode="inline">
                   {block.repeat(v)}
                 </span>
               ),
@@ -180,7 +211,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
             )
           )}
         </li>
-      ))}
+      ))} */}
       {children}
     </div>
   )
