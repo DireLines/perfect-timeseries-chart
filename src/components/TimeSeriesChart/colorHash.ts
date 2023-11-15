@@ -1,5 +1,6 @@
+// @ts-nocheck
 export const colorHash = (inputString) => {
-  const sum = 0
+  let sum = 0
 
   for (var i in inputString) {
     sum += inputString.charCodeAt(i)

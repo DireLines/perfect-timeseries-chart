@@ -1,6 +1,6 @@
 import React from "react"
 import { mapObjIndexed } from "ramda"
-// import colorHash from "./colorHash"
+import { colorHash } from "./colorHash.js"
 
 // type RGB = `rgb(${number}, ${number}, ${number})`;
 // type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
@@ -79,10 +79,29 @@ export type TimeSeriesChartProps = {
 //   emergency: "#ff0000",
 // }
 
-// const getDisplayColor: (column: string, value: string) => string = (
-//   column: string,
-//   value: string
-// ) => colorHash(`${column}:${value}`)
+const commonHtmlColors = [
+  "aqua",
+  "black",
+  "blue",
+  "fuchsia",
+  "gray",
+  "green",
+  "lime",
+  "maroon",
+  "navy",
+  "olive",
+  "purple",
+  "red",
+  "silver",
+  "teal",
+  "white",
+  "yellow",
+]
+
+const getDisplayColor: (column: string, value: string) => string = (
+  column: string,
+  value: string
+) => (commonHtmlColors.includes(value) ? value : colorHash(`${column}:${value}`))
 
 const min = (list: [number]) => Math.min(...list)
 const max = (list: [number]) => Math.max(...list)
@@ -95,6 +114,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartProps = (data) => {
     start: dataMin,
     end: dataMax,
     active: true,
+    columnName: "default",
     binSize: (dataMax - dataMin) / 25,
     displayMode: DisplayMode.StackedBar,
     navigation: { scrollToZoom: true, clickAndDragToZoom: true, clickToToggle: true },
@@ -103,16 +123,19 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartProps = (data) => {
     textures: false,
   }
 }
-export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children }) => {
+export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
+  const props = { ...defaultProps(data), ...rest }
+  const { columnName } = props
   const block = "█"
   return (
     <div>
       {data.map((item) => (
         <li>
+          {new Date(item.time).toLocaleString()}:
           {Object.values(
             mapObjIndexed(
               (v, k) => (
-                <span color={k} displayMode="inline">
+                <span color={getDisplayColor(columnName ?? "default", k)} displayMode="inline">
                   {block.repeat(v)}
                 </span>
               ),
