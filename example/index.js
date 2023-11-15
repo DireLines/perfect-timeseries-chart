@@ -36,10 +36,4 @@ const data = [
     },
   },
 ]
-ReactDOM.render(
-  <>
-    <TimeSeriesChart data={data} />
-    hello
-  </>,
-  document.getElementById("app")
-)
+ReactDOM.render(<TimeSeriesChart data={data} />, document.getElementById("app"))
