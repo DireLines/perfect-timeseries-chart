@@ -1,6 +1,10 @@
 import React from "react"
 import ReactDOM from "react-dom"
-import TimeSeriesChart from "../dist/bundle" // Adjust the path as needed
+import { TimeSeriesChart } from "../dist"
+const second = 1000
+const minute = 60 * second
+const hour = 60 * minute
+
 const data = [
   {
     time: Date.now(),
