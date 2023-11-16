@@ -237,8 +237,8 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const dispStartTime = min(...displayData.map(({ time }) => time))
   const dispEndTime = max(...displayData.map(({ time }) => time))
   // total SVG dimensions
-  const width = 1000
-  const height = 300
+  const width = 1600
+  const height = 500
   //dimensions for part of SVG in which bars can be drawn
   //leave room for axis markers and padding
   const dispWidth = Math.round(width * 0.9)
@@ -279,7 +279,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           rects.push(
             <rect
               y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
-              width={Math.ceil(barWidth * 0.95)}
+              width={Math.ceil(barWidth * 0.95)} // padding
               height={currentRectHeight} // Scale the height based on the value
               fill={getDisplayColor(columnName, k)} // Set the color of the bar
             />
