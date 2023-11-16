@@ -251,7 +251,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const height = 400
   //dimensions for part of SVG in which bars can be drawn
   //leave room for axis markers and padding
-  const dispWidth = Math.round(width * 0.9)
+  const dispWidth = Math.round(width * 0.8)
   const dispHeight = Math.round(height * 0.82)
   const columnPadY = Math.round((height - dispHeight) / 2)
   const columnPadX = Math.round((width - dispWidth) / 2)
