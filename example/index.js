@@ -76,8 +76,8 @@ const data = [
 ]
 ReactDOM.render(
   <>
-    <TimeSeriesChart data={bigData} />
     <TimeSeriesChart data={data} />
+    <TimeSeriesChart data={bigData} />
   </>,
   document.getElementById("app")
 )

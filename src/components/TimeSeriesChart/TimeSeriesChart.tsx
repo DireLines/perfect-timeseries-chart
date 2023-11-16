@@ -339,14 +339,14 @@ const createLegend = (chartProps: TimeSeriesChartData) => {
     vals.push({ value: k, color: values[k] })
   }
   return (
-    <>
+    <ul style={{ listStyle: "none" }}>
       {vals.map(({ value, color }) => (
-        <p>
+        <li style={{ float: "left", marginRight: "10px" }}>
           <span style={{ color }}>█</span>
           {` - ${value}`}
-        </p>
+        </li>
       ))}
-    </>
+    </ul>
   )
 }
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
