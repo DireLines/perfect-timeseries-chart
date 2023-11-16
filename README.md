@@ -7,7 +7,9 @@ I just want to send the data into a component and have it visualized right witho
 I don't want everything and the kitchen sink, I just want a single perfect timeseries chart component.
 
 ```jsx
+import React from "react"
 import { TimeSeriesChart } from "perfect-timeseries-chart"
+
 const hour = 1000 * 60 * 60
 const data = [
   {
