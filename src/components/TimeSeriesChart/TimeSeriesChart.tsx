@@ -324,7 +324,31 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
     </svg>
   )
 }
-const createLegend = (chartProps: TimeSeriesChartData) => {}
+const createLegend = (chartProps: TimeSeriesChartData) => {
+  const { data, columnName } = chartProps
+  const values: any = {}
+  for (const elem of data) {
+    for (const k in elem.counts) {
+      if (!(k in values)) {
+        values[k] = getDisplayColor(columnName, k)
+      }
+    }
+  }
+  const vals: any = []
+  for (const k in values) {
+    vals.push({ value: k, color: values[k] })
+  }
+  return (
+    <>
+      {vals.map(({ value, color }) => (
+        <p>
+          <span style={{ color }}>█</span>
+          {` - ${value}`}
+        </p>
+      ))}
+    </>
+  )
+}
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
   const ref = useRef(null)
   const chartProps = { ...defaultProps(data), ...rest }
