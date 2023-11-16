@@ -180,6 +180,12 @@ const countDisplayIncrements = [
   1000000000, 2000000000, 5000000000, 10000000000,
 ]
 
+const abbreviateNumber = (n: number) =>
+  Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n)
+
 const min = Math.min
 const max = Math.max
 
@@ -257,7 +263,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const columnPadX = Math.round((width - dispWidth) / 2)
   const barWidth = Math.ceil(dispWidth / displayData.length)
   const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
-  const countDisplayIncrement = closestNumber(tallestBarTotalCount / 5, countDisplayIncrements)
+  const countDisplayIncrement = closestNumber(tallestBarTotalCount / 4, countDisplayIncrements)
   const countsToIndicate = [
     ...range(0, tallestBarTotalCount - countDisplayIncrement / 2, countDisplayIncrement),
     tallestBarTotalCount,
@@ -286,20 +292,20 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
         <>
           <line
             stroke={indicatorColor}
-            x1={columnPadX - 8}
+            x1={columnPadX}
             y1={countToPixel(count)}
             x2={width - columnPadX}
             y2={countToPixel(count)}
             opacity={0.5}
           />
           <text
-            x={columnPadX - 16}
+            x={columnPadX - 8}
             y={countToPixel(count) + 6}
             textAnchor="end"
             fontSize="18"
             fill={indicatorColor}
           >
-            {count}
+            {abbreviateNumber(count)}
           </text>
         </>
       ))}

@@ -19,7 +19,12 @@ const generateRandomString = (length) => {
   })
   return result
 }
-const makeBigData = (numColumns = 100, valuesPerColumn = 50, timeSpacing = minute) => {
+const makeBigData = ({
+  numColumns = 100,
+  valuesPerColumn = 50,
+  countMultiplier = 20,
+  timeSpacing = 2 * minute,
+}) => {
   const result = []
   const values = []
   for (let j = 0; j < valuesPerColumn; j++) {
@@ -28,7 +33,7 @@ const makeBigData = (numColumns = 100, valuesPerColumn = 50, timeSpacing = minut
   for (let i = 0; i < numColumns; i++) {
     const counts = {}
     for (const v of values) {
-      counts[v] = Math.round(Math.random() * 20)
+      counts[v] = Math.round(Math.random() * countMultiplier)
     }
     result.push({
       time: Date.now() - timeSpacing * i,
@@ -37,7 +42,7 @@ const makeBigData = (numColumns = 100, valuesPerColumn = 50, timeSpacing = minut
   }
   return result
 }
-const bigData = makeBigData()
+const bigData = makeBigData({ countMultiplier: 100000 })
 const data = [
   {
     time: Date.now(),
