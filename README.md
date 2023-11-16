@@ -30,13 +30,15 @@ const data = [
   },
 ]
 export default function MyDashboard() {
-  return (
-    <div>
-      <h1>The data:</h1>
-      <TimeSeriesChart data={data} />
-    </div>
-  )
+  return <TimeSeriesChart data={data} />
 }
 ```
+
 <img width="872" alt="Screen Shot 2023-11-15 at 11 22 41 PM" src="https://github.com/DireLines/perfect-timeseries-chart/assets/16977657/fd2e5861-0f69-454e-a14f-9f2dd8a74138">
 
+## Features
+
+- `data` is the only required input.
+- To change the time interval displayed, use the `start` and `end` props (they will accept either a `Date` or epoch timestamp in ms).
+- Coloring is hash-based and deterministic - the same content will be displayed with the same color every time, without any need to store a palette. You can override specific hash-generated colors if needed.
+- Stacked bar chart by default, but there are a few other display options: Line graph, Stacked Area, and Heatmap for histograms over time. To switch between them, use the `displayMode` prop.

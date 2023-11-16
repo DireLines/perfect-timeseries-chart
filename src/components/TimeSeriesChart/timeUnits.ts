@@ -30,6 +30,9 @@ export const timeDisplayIncrements = [
   6 * month,
   year,
   5 * year,
+  10 * year,
+  50 * year,
+  100 * year,
 ]
 
 const closestNumber = (n: number, nums: number[]) => {
