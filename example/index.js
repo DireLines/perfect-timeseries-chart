@@ -23,7 +23,7 @@ const makeBigData = ({
   numColumns = 100,
   valuesPerColumn = 50,
   countMultiplier = 20,
-  timeSpacing = 2 * minute,
+  timeSpacing = minute,
 }) => {
   const result = []
   const values = []
@@ -42,7 +42,7 @@ const makeBigData = ({
   }
   return result
 }
-const bigData = makeBigData({ countMultiplier: 100000 })
+const bigData = makeBigData({ countMultiplier: 100, numColumns: 10000, timeSpacing: second })
 const data = [
   {
     time: Date.now(),

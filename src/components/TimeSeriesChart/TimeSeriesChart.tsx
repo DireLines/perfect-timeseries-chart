@@ -296,7 +296,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             y1={countToPixel(count)}
             x2={width - columnPadX}
             y2={countToPixel(count)}
-            opacity={0.5}
+            opacity={0.3}
           />
           <text
             x={columnPadX - 8}
@@ -324,8 +324,8 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             <Tooltip
               title={
                 <>
-                  <p style={{ fontWeight: "bold" }}>{new Date(point.time).toISOString()}</p>
-                  {columnName}: {value} <span style={{ fontWeight: "bold" }}>{count}</span>
+                  {columnName}: {value}{" "}
+                  <div style={{ fontWeight: "bold" }}>{abbreviateNumber(count)}</div>
                 </>
               }
               placement="right"
