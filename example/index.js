@@ -4,7 +4,40 @@ import { TimeSeriesChart } from "../dist"
 const second = 1000
 const minute = 60 * second
 const hour = 60 * minute
+const generateRandomString = (length) => {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  const charactersLength = characters.length
+  let result = ""
 
+  // Create an array of 32-bit unsigned integers
+  const randomValues = new Uint32Array(length)
+
+  // Generate random values
+  window.crypto.getRandomValues(randomValues)
+  randomValues.forEach((value) => {
+    result += characters.charAt(value % charactersLength)
+  })
+  return result
+}
+const makeBigData = (numColumns = 100, valuesPerColumn = 50, timeSpacing = minute) => {
+  const result = []
+  const values = []
+  for (let j = 0; j < valuesPerColumn; j++) {
+    values.push(generateRandomString(8))
+  }
+  for (let i = 0; i < numColumns; i++) {
+    const counts = {}
+    for (const v of values) {
+      counts[v] = Math.round(Math.random() * 20)
+    }
+    result.push({
+      time: Date.now() - timeSpacing * i,
+      counts,
+    })
+  }
+  return result
+}
+const bigData = makeBigData()
 const data = [
   {
     time: Date.now(),
@@ -39,4 +72,4 @@ const data = [
     },
   },
 ]
-ReactDOM.render(<TimeSeriesChart data={data} />, document.getElementById("app"))
+ReactDOM.render(<TimeSeriesChart data={bigData} />, document.getElementById("app"))

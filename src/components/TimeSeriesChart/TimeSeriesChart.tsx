@@ -1,5 +1,5 @@
 import React, { useRef } from "react"
-import { mapObjIndexed, mergeWith, sum } from "ramda"
+import { mapObjIndexed, mergeWith, sum, isEmpty, isNil } from "ramda"
 import { colorHash, invertColor } from "./color"
 import { closestTimeIncrement, timeDisplayIncrements } from "./timeUnits"
 
@@ -13,6 +13,26 @@ export type TimeSeries = {
     [value: string]: number
   }
 }[]
+//runtime type check
+const isTimeSeries = (data) => {
+  if (!Array.isArray(data)) {
+    return false
+  }
+  for (const elem of data) {
+    if (isNil(elem?.time) || isNil(elem?.counts)) {
+      return false
+    }
+    if (typeof elem.time !== "number" || typeof elem.counts !== "object") {
+      return false
+    }
+    for (const k in elem.counts) {
+      if (typeof elem.counts[k] !== "number") {
+        return false
+      }
+    }
+  }
+  return true
+}
 
 //maybe you have multiple columns you bucketed for each timestamp
 //and want choose between them in an external component
@@ -25,6 +45,32 @@ export type TimeSeriesMultiValue = {
     }
   }
 }[]
+//runtime type check
+const isTimeSeriesMultiValue = (data) => {
+  if (!Array.isArray(data)) {
+    return false
+  }
+  for (const elem of data) {
+    if (isNil(elem?.time) || isNil(elem?.counts)) {
+      return false
+    }
+    if (typeof elem.time !== "number" || typeof elem.counts !== "object") {
+      return false
+    }
+    for (const k in elem.counts) {
+      if (typeof elem.counts[k] !== "object") {
+        return false
+      }
+      const counts = elem.counts[k]
+      for (const c in counts) {
+        if (typeof counts[c] !== "number") {
+          return false
+        }
+      }
+    }
+  }
+  return true
+}
 
 //maybe your data is a straight list of occurrences and you haven't done the bucketing yet
 //that's alright, I'll do the bucketing for you
@@ -32,6 +78,23 @@ export type TimeSeriesPointCloud = {
   time: Time
   [column: string]: string | Time
 }[]
+//runtime type check
+const isTimeSeriesPointCloud = (data) => {
+  if (!Array.isArray(data)) {
+    return false
+  }
+  for (const elem of data) {
+    if (isNil(elem?.time)) {
+      return false
+    }
+    for (const k in elem) {
+      if (typeof elem[k] !== "number") {
+        return false
+      }
+    }
+  }
+  return true
+}
 
 export enum DisplayMode {
   StackedBar = "StackedBar",
@@ -55,7 +118,7 @@ export type TimeSeriesChartData = {
   end: Time
   active: boolean
   children: any
-  binSizeMs: number
+  numBins: number
   columnName: string
   displayMode: DisplayMode
   navigation: NavigationOptions
@@ -119,7 +182,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     end: dataMax,
     active: true,
     columnName: "default",
-    binSizeMs: (dataMax - dataMin) / 25,
+    numBins: 30,
     displayMode: DisplayMode.StackedBar,
     navigation: { scrollToZoom: true, clickAndDragToZoom: true, clickToToggle: true },
     presetColors: {},
@@ -152,9 +215,10 @@ const toEpochMs = (date: Time) => {
 const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
 const nearestMultipleAbove = (value, step) => Math.ceil(value / step) * step
 const createSvg = (chartProps: TimeSeriesChartData) => {
-  const { data, columnName, binSizeMs, start, end, backgroundColor } = chartProps
+  const { data, columnName, numBins, start, end, backgroundColor } = chartProps
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
+  const binSizeMs = Math.round((endTime - startTime) / numBins)
   const displayBinSizeMs = closestTimeIncrement(binSizeMs)
   const times = range(
     nearestMultipleBelow(startTime, displayBinSizeMs),
@@ -195,14 +259,14 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
       <line
         stroke={indicatorColor}
         x1={columnPadX}
-        y1={height - columnPadY - 1}
+        y1={height - columnPadY}
         x2={width - columnPadX}
-        y2={height - columnPadY - 1}
+        y2={height - columnPadY}
       />
       <line
         stroke={indicatorColor}
         x1={columnPadX}
-        y1={height - columnPadY - 1}
+        y1={height - columnPadY}
         x2={columnPadX}
         y2={columnPadY}
       />
@@ -214,7 +278,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           const currentRectHeight = getPixelHeight(point.counts[k])
           rects.push(
             <rect
-              y={height - columnPadY - 2 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
+              y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
               width={Math.ceil(barWidth * 0.95)}
               height={currentRectHeight} // Scale the height based on the value
               fill={getDisplayColor(columnName, k)} // Set the color of the bar
@@ -233,7 +297,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
                   x1={0}
                   y1={height - columnPadY + 8}
                   x2={0}
-                  y2={height - columnPadY - 1}
+                  y2={height - columnPadY}
                 />
                 <text
                   x={barWidth / 2}
