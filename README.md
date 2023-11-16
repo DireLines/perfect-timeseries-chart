@@ -36,3 +36,5 @@ export default function MyDashboard() {
   )
 }
 ```
+<img width="872" alt="Screen Shot 2023-11-15 at 11 22 41 PM" src="https://github.com/DireLines/perfect-timeseries-chart/assets/16977657/fd2e5861-0f69-454e-a14f-9f2dd8a74138">
+
