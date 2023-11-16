@@ -258,7 +258,10 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const barWidth = Math.ceil(dispWidth / displayData.length)
   const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
   const countDisplayIncrement = closestNumber(tallestBarTotalCount / 5, countDisplayIncrements)
-  const countsToIndicate = range(0, tallestBarTotalCount, countDisplayIncrement)
+  const countsToIndicate = [
+    ...range(0, tallestBarTotalCount - countDisplayIncrement / 2, countDisplayIncrement),
+    tallestBarTotalCount,
+  ]
   const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * dispHeight)
   const countToPixel = (count: number) => height - columnPadY - 1 - getPixelHeight(count)
   const timeToPixel = (time: number) =>
@@ -286,22 +289,6 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
         y2={columnPadY}
       />
       {/* vertical axis markers */}
-      <line
-        stroke={indicatorColor}
-        x1={columnPadX - 8}
-        y1={countToPixel(tallestBarTotalCount)}
-        x2={width - columnPadX}
-        y2={countToPixel(tallestBarTotalCount)}
-      />
-      <text
-        x={columnPadX - 16}
-        y={countToPixel(tallestBarTotalCount) + 6}
-        textAnchor="end"
-        fontSize="18"
-        fill={indicatorColor}
-      >
-        {tallestBarTotalCount}
-      </text>
       {countsToIndicate.map((count) => (
         <>
           <line
@@ -310,6 +297,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             y1={countToPixel(count)}
             x2={width - columnPadX}
             y2={countToPixel(count)}
+            opacity={0.5}
           />
           <text
             x={columnPadX - 16}

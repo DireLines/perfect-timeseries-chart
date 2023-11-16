@@ -44,7 +44,7 @@ const data = [
     counts: {
       red: 5,
       blue: 8,
-      green: 12,
+      green: 11,
     },
   },
   {
