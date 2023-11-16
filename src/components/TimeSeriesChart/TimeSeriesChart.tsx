@@ -218,16 +218,15 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const { data, columnName, numBins, start, end, backgroundColor } = chartProps
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
-  const binSizeMs = Math.round((endTime - startTime) / numBins)
-  const displayBinSizeMs = closestTimeIncrement(binSizeMs)
+  const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
   const times = range(
-    nearestMultipleBelow(startTime, displayBinSizeMs),
-    nearestMultipleAbove(endTime, displayBinSizeMs),
-    displayBinSizeMs
+    nearestMultipleBelow(startTime, binSizeMs),
+    nearestMultipleAbove(endTime, binSizeMs),
+    binSizeMs
   )
   const displayData = times.map((timestamp) => {
     const bucketStart = timestamp
-    const bucketEnd = timestamp + displayBinSizeMs
+    const bucketEnd = timestamp + binSizeMs
     const bucketData = data
       .filter((item) => bucketStart <= toEpochMs(item.time) && toEpochMs(item.time) < bucketEnd)
       .map((item) => item.counts)
@@ -237,8 +236,8 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const dispStartTime = min(...displayData.map(({ time }) => time))
   const dispEndTime = max(...displayData.map(({ time }) => time))
   // total SVG dimensions
-  const width = 1600
-  const height = 500
+  const width = 1200
+  const height = 400
   //dimensions for part of SVG in which bars can be drawn
   //leave room for axis markers and padding
   const dispWidth = Math.round(width * 0.9)
@@ -248,11 +247,13 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const barWidth = Math.ceil(dispWidth / displayData.length)
   const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
   const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * dispHeight)
-  const getXCoord = (time: number) =>
+  const timeToPixel = (time: number) =>
     Math.round(((time - dispStartTime) / (dispEndTime - dispStartTime)) * dispWidth) + columnPadX
+  const pixelToTime = (pixel: number) =>
+    Math.round(((pixel - columnPadX) / dispWidth) * (dispEndTime - dispStartTime)) + dispStartTime
   const indicatorColor = invertColor(backgroundColor)
   return (
-    <svg width="100%" height="400px" viewBox={`0 0 ${width} ${height}`}>
+    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
       {/* Background rectangle */}
       <rect width="100%" height="100%" fill={backgroundColor} />
       {/* axes */}
@@ -275,6 +276,9 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
         const rects: any[] = []
         let totalHeight = 0
         for (const k in point.counts) {
+          if (point.counts[k] === 0) {
+            continue
+          }
           const currentRectHeight = getPixelHeight(point.counts[k])
           rects.push(
             <rect
@@ -286,7 +290,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           )
           totalHeight += currentRectHeight
         }
-        const x = getXCoord(point.time)
+        const x = timeToPixel(point.time)
         return (
           <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
@@ -299,14 +303,8 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
                   x2={0}
                   y2={height - columnPadY}
                 />
-                <text
-                  x={barWidth / 2}
-                  y={height - 5} // Position the text at the bottom
-                  textAnchor="middle"
-                  fontSize="16"
-                  fill={indicatorColor}
-                >
-                  {new Date(point.time).toLocaleTimeString("en-US")}
+                <text x={0} y={height - 5} textAnchor="middle" fontSize="16" fill={indicatorColor}>
+                  {new Date(point.time).toTimeString().split(" ")[0]}
                 </text>
               </>
             ) : null}

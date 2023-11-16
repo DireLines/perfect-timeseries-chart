@@ -59,6 +59,7 @@ const data = [
   {
     time: Date.now() - 2 * hour,
     counts: {
+      green: 0,
       red: 8,
       blue: 5,
       bleu: 2,
@@ -69,7 +70,14 @@ const data = [
     counts: {
       red: 8,
       blue: 4,
+      green: 0,
     },
   },
 ]
-ReactDOM.render(<TimeSeriesChart data={bigData} />, document.getElementById("app"))
+ReactDOM.render(
+  <>
+    <TimeSeriesChart data={bigData} />
+    <TimeSeriesChart data={data} />
+  </>,
+  document.getElementById("app")
+)
