@@ -280,10 +280,12 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             continue
           }
           const currentRectHeight = getPixelHeight(point.counts[k])
+          const padding = 0.93
           rects.push(
             <rect
+              x={Math.round((barWidth * (1 - padding)) / 2)}
               y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
-              width={Math.ceil(barWidth * 0.95)} // padding
+              width={Math.ceil(barWidth * padding)}
               height={currentRectHeight} // Scale the height based on the value
               fill={getDisplayColor(columnName, k)} // Set the color of the bar
             />
@@ -307,7 +309,15 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
                   {new Date(point.time).toTimeString().split(" ")[0]}
                 </text>
               </>
-            ) : null}
+            ) : (
+              <line
+                stroke={indicatorColor}
+                x1={0}
+                y1={height - columnPadY + 4}
+                x2={0}
+                y2={height - columnPadY}
+              />
+            )}
           </g>
         )
       })}
