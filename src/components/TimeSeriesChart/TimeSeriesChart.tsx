@@ -130,6 +130,7 @@ export type TimeSeriesChartData = {
 
 export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
 
+//standardized, representative colors for common log levels
 const logLevelColors = {
   info: "#82dd55",
   debug: "#82dd55",
@@ -141,6 +142,8 @@ const logLevelColors = {
   emergency: "#ff0000",
 }
 
+//if the value is literally the name of a common color,
+//don't be misleading and generate some random color instead
 const commonHtmlColors = [
   "aqua",
   "black",
