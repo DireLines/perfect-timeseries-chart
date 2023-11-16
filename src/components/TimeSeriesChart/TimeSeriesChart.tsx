@@ -1,7 +1,7 @@
 import React, { useRef } from "react"
-import { mapObjIndexed, mergeWith, sum, isEmpty, isNil } from "ramda"
+import { mergeWith, sum, isNil } from "ramda"
 import { colorHash, invertColor } from "./color"
-import { closestTimeIncrement, timeDisplayIncrements } from "./timeUnits"
+import { closestTimeIncrement } from "./timeUnits"
 
 export type Time = number | Date
 
