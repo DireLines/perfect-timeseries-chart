@@ -251,7 +251,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const height = 400
   //dimensions for part of SVG in which bars can be drawn
   //leave room for axis markers and padding
-  const dispWidth = Math.round(width * 0.8)
+  const dispWidth = Math.round(width * 0.9)
   const dispHeight = Math.round(height * 0.82)
   const columnPadY = Math.round((height - dispHeight) / 2)
   const columnPadX = Math.round((width - dispWidth) / 2)
@@ -280,13 +280,6 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
         y1={height - columnPadY}
         x2={width - columnPadX}
         y2={height - columnPadY}
-      />
-      <line
-        stroke={indicatorColor}
-        x1={columnPadX}
-        y1={height - columnPadY}
-        x2={columnPadX}
-        y2={columnPadY}
       />
       {/* vertical axis markers */}
       {countsToIndicate.map((count) => (
