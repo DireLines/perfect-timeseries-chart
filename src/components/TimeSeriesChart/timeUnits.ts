@@ -35,7 +35,7 @@ export const timeDisplayIncrements = [
   100 * year,
 ]
 
-const closestNumber = (n: number, nums: number[]) => {
+export const closestNumber = (n: number, nums: number[]) => {
   let minDiff = Number.MAX_SAFE_INTEGER
   let min = 0
   for (const num of nums) {

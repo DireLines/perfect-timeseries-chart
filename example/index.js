@@ -74,10 +74,13 @@ const data = [
     },
   },
 ]
+const start = Date.now() - 5 * hour
+const end = Date.now()
 ReactDOM.render(
   <>
     <TimeSeriesChart data={data} />
-    <TimeSeriesChart data={bigData} />
+    <TimeSeriesChart data={data} start={start} end={end} columnName="color" />
+    <TimeSeriesChart data={bigData} start={start} end={end} />
   </>,
   document.getElementById("app")
 )

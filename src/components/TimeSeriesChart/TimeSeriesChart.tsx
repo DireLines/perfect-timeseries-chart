@@ -1,8 +1,8 @@
 import React, { useRef } from "react"
 import { mergeWith, sum, isNil } from "ramda"
 import { colorHash, invertColor } from "./color"
-import { closestTimeIncrement } from "./timeUnits"
-
+import { closestNumber, closestTimeIncrement } from "./timeUnits"
+import Tooltip from "@mui/material/Tooltip"
 export type Time = number | Date
 
 //the purest format of time series data
@@ -126,6 +126,7 @@ export type TimeSeriesChartData = {
   logLevelPresetColors: boolean
   textures: boolean
   backgroundColor: string
+  onBarHover: (any) => void
 }
 
 export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
@@ -173,6 +174,12 @@ const getDisplayColor: (column: string, value: string) => string = (
   return colorHash(`${column}:${value}`)
 }
 
+const countDisplayIncrements = [
+  1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000,
+  1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000, 200000000, 500000000,
+  1000000000, 2000000000, 5000000000, 10000000000,
+]
+
 const min = Math.min
 const max = Math.max
 
@@ -184,7 +191,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     start: dataMin,
     end: dataMax,
     active: true,
-    columnName: "default",
+    columnName: "value",
     numBins: 30,
     displayMode: DisplayMode.StackedBar,
     navigation: { scrollToZoom: true, clickAndDragToZoom: true, clickToToggle: true },
@@ -193,6 +200,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     textures: false,
     children: null,
     backgroundColor: "#202027",
+    onBarHover: () => {},
   }
 }
 const range = (start: number, end: number, step: number) => {
@@ -218,7 +226,7 @@ const toEpochMs = (date: Time) => {
 const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
 const nearestMultipleAbove = (value, step) => Math.ceil(value / step) * step
 const createSvg = (chartProps: TimeSeriesChartData) => {
-  const { data, columnName, numBins, start, end, backgroundColor } = chartProps
+  const { data, columnName, numBins, start, end, backgroundColor, onBarHover } = chartProps
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
   const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
@@ -249,7 +257,10 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   const columnPadX = Math.round((width - dispWidth) / 2)
   const barWidth = Math.ceil(dispWidth / displayData.length)
   const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
+  const countDisplayIncrement = closestNumber(tallestBarTotalCount / 5, countDisplayIncrements)
+  const countsToIndicate = range(0, tallestBarTotalCount, countDisplayIncrement)
   const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * dispHeight)
+  const countToPixel = (count: number) => height - columnPadY - 1 - getPixelHeight(count)
   const timeToPixel = (time: number) =>
     Math.round(((time - dispStartTime) / (dispEndTime - dispStartTime)) * dispWidth) + columnPadX
   const pixelToTime = (pixel: number) =>
@@ -274,24 +285,74 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
         x2={columnPadX}
         y2={columnPadY}
       />
+      {/* vertical axis markers */}
+      <line
+        stroke={indicatorColor}
+        x1={columnPadX - 8}
+        y1={countToPixel(tallestBarTotalCount)}
+        x2={width - columnPadX}
+        y2={countToPixel(tallestBarTotalCount)}
+      />
+      <text
+        x={columnPadX - 16}
+        y={countToPixel(tallestBarTotalCount) + 6}
+        textAnchor="end"
+        fontSize="18"
+        fill={indicatorColor}
+      >
+        {tallestBarTotalCount}
+      </text>
+      {countsToIndicate.map((count) => (
+        <>
+          <line
+            stroke={indicatorColor}
+            x1={columnPadX - 8}
+            y1={countToPixel(count)}
+            x2={width - columnPadX}
+            y2={countToPixel(count)}
+          />
+          <text
+            x={columnPadX - 16}
+            y={countToPixel(count) + 6}
+            textAnchor="end"
+            fontSize="18"
+            fill={indicatorColor}
+          >
+            {count}
+          </text>
+        </>
+      ))}
       {/* Data rects */}
       {displayData.map((point, index) => {
         const rects: any[] = []
         let totalHeight = 0
-        for (const k in point.counts) {
-          if (point.counts[k] === 0) {
+        for (const value in point.counts) {
+          const count = point.counts[value]
+          if (count === 0) {
             continue
           }
-          const currentRectHeight = getPixelHeight(point.counts[k])
+          const currentRectHeight = getPixelHeight(count)
           const padding = 0.93
           rects.push(
-            <rect
-              x={Math.round((barWidth * (1 - padding)) / 2)}
-              y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
-              width={Math.ceil(barWidth * padding)}
-              height={currentRectHeight} // Scale the height based on the value
-              fill={getDisplayColor(columnName, k)} // Set the color of the bar
-            />
+            <Tooltip
+              title={
+                <>
+                  <p style={{ fontWeight: "bold" }}>{new Date(point.time).toISOString()}</p>
+                  {columnName}: {value} <span style={{ fontWeight: "bold" }}>{count}</span>
+                </>
+              }
+              placement="right"
+              arrow
+            >
+              <rect
+                x={Math.round((barWidth * (1 - padding)) / 2)}
+                y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
+                width={Math.ceil(barWidth * padding)}
+                height={currentRectHeight} // Scale the height based on the value
+                fill={getDisplayColor(columnName, value)} // Set the color of the bar
+                onMouseOver={() => onBarHover({ columnName, value, count, time: point.time })}
+              />
+            </Tooltip>
           )
           totalHeight += currentRectHeight
         }
