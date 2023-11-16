@@ -19,6 +19,7 @@ const data = [
     counts: {
       red: 1,
       blue: 2,
+      bleu: 2,
       green: 3,
     },
   },
@@ -27,6 +28,7 @@ const data = [
     counts: {
       red: 8,
       blue: 5,
+      bleu: 2,
     },
   },
   {

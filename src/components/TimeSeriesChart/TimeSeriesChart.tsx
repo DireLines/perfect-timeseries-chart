@@ -1,12 +1,7 @@
 import React, { useRef } from "react"
 import { mapObjIndexed, mergeWith, sum } from "ramda"
-import { useResize } from "./useResize"
-import { colorHash } from "./colorHash"
-
-// type RGB = `rgb(${number}, ${number}, ${number})`;
-// type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
-// type HEX = `#${string}`;
-// export type Color = RGB | RGBA | HEX;
+import { colorHash, invertColor } from "./color"
+import { closestTimeIncrement, timeDisplayIncrements } from "./timeUnits"
 
 export type Time = number | Date
 
@@ -67,6 +62,7 @@ export type TimeSeriesChartData = {
   presetColors: { [key: string]: string }
   logLevelPresetColors: boolean
   textures: boolean
+  backgroundColor: string
 }
 
 export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
@@ -130,6 +126,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     logLevelPresetColors: true,
     textures: false,
     children: null,
+    backgroundColor: "#202027",
   }
 }
 const range = (start: number, end: number, step: number) => {
@@ -151,26 +148,65 @@ const toEpochMs = (date: Time) => {
     return Date.parse(date.toString())
   }
 }
+
+const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
+const nearestMultipleAbove = (value, step) => Math.ceil(value / step) * step
 const createSvg = (chartProps: TimeSeriesChartData) => {
-  const { data, columnName, binSizeMs, start, end } = chartProps
-  const times = range(toEpochMs(start), toEpochMs(end), binSizeMs)
+  const { data, columnName, binSizeMs, start, end, backgroundColor } = chartProps
+  const startTime = toEpochMs(start)
+  const endTime = toEpochMs(end)
+  const displayBinSizeMs = closestTimeIncrement(binSizeMs)
+  const times = range(
+    nearestMultipleBelow(startTime, displayBinSizeMs),
+    nearestMultipleAbove(endTime, displayBinSizeMs),
+    displayBinSizeMs
+  )
   const displayData = times.map((timestamp) => {
     const bucketStart = timestamp
-    const bucketEnd = timestamp + binSizeMs
+    const bucketEnd = timestamp + displayBinSizeMs
     const bucketData = data
       .filter((item) => bucketStart <= toEpochMs(item.time) && toEpochMs(item.time) < bucketEnd)
       .map((item) => item.counts)
       .reduce((curr, next) => mergeWith((a, b) => a + b, curr, next), {})
     return { time: timestamp, counts: bucketData }
   })
-  // SVG dimensions
-  const width = 800
+  const dispStartTime = min(...displayData.map(({ time }) => time))
+  const dispEndTime = max(...displayData.map(({ time }) => time))
+  // total SVG dimensions
+  const width = 1000
   const height = 300
-  const barWidth = Math.ceil(width / displayData.length)
+  //dimensions for part of SVG in which bars can be drawn
+  //leave room for axis markers and padding
+  const dispWidth = Math.round(width * 0.9)
+  const dispHeight = Math.round(height * 0.82)
+  const columnPadY = Math.round((height - dispHeight) / 2)
+  const columnPadX = Math.round((width - dispWidth) / 2)
+  const barWidth = Math.ceil(dispWidth / displayData.length)
   const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
-  const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * height)
+  const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * dispHeight)
+  const getXCoord = (time: number) =>
+    Math.round(((time - dispStartTime) / (dispEndTime - dispStartTime)) * dispWidth) + columnPadX
+  const indicatorColor = invertColor(backgroundColor)
   return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+    <svg width="100%" height="400px" viewBox={`0 0 ${width} ${height}`}>
+      {/* Background rectangle */}
+      <rect width="100%" height="100%" fill={backgroundColor} />
+      {/* axes */}
+      <line
+        stroke={indicatorColor}
+        x1={columnPadX}
+        y1={height - columnPadY - 1}
+        x2={width - columnPadX}
+        y2={height - columnPadY - 1}
+      />
+      <line
+        stroke={indicatorColor}
+        x1={columnPadX}
+        y1={height - columnPadY - 1}
+        x2={columnPadX}
+        y2={columnPadY}
+      />
+      {/* Data rects */}
       {displayData.map((point, index) => {
         const rects: any[] = []
         let totalHeight = 0
@@ -178,7 +214,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           const currentRectHeight = getPixelHeight(point.counts[k])
           rects.push(
             <rect
-              y={height - (currentRectHeight + totalHeight)} // Adjust the y position based on value
+              y={height - columnPadY - 2 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
               width={Math.ceil(barWidth * 0.95)}
               height={currentRectHeight} // Scale the height based on the value
               fill={getDisplayColor(columnName, k)} // Set the color of the bar
@@ -186,45 +222,44 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           )
           totalHeight += currentRectHeight
         }
+        const x = getXCoord(point.time)
         return (
-          <g key={index} transform={`translate(${index * barWidth}, 0)`}>
+          <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
-            <text
-              x={barWidth / 2}
-              y={height - 5} // Position the text at the bottom
-              textAnchor="middle"
-              fontSize="10"
-              fill="black"
-            >
-              {new Date(point.time).toLocaleString()}
-            </text>
+            {index % 5 === 0 ? (
+              <>
+                <line
+                  stroke={indicatorColor}
+                  x1={0}
+                  y1={height - columnPadY + 8}
+                  x2={0}
+                  y2={height - columnPadY - 1}
+                />
+                <text
+                  x={barWidth / 2}
+                  y={height - 5} // Position the text at the bottom
+                  textAnchor="middle"
+                  fontSize="16"
+                  fill={indicatorColor}
+                >
+                  {new Date(point.time).toLocaleTimeString("en-US")}
+                </text>
+              </>
+            ) : null}
           </g>
         )
       })}
     </svg>
   )
 }
+const createLegend = (chartProps: TimeSeriesChartData) => {}
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
   const ref = useRef(null)
   const chartProps = { ...defaultProps(data), ...rest }
   return (
-    <div ref={ref} style={{ width: "100%", height: "100%" }}>
+    <div ref={ref} style={{ margin: "auto", width: "80%", height: "100%" }}>
       {createSvg(chartProps)}
-      {/* {displayData.map((item) => (
-        <li>
-          <span>{new Date(item.time).toLocaleString()}: </span>
-          {Object.values(
-            mapObjIndexed(
-              (v, k) => (
-                <span color={getDisplayColor(columnName, k)} displayMode="inline">
-                  {block.repeat(v)}
-                </span>
-              ),
-              item.counts
-            )
-          )}
-        </li>
-      ))} */}
+      {createLegend(chartProps)}
       {children}
     </div>
   )
