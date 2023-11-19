@@ -16,6 +16,7 @@ export const timeDisplayIncrements = [
   5 * second,
   30 * second,
   minute,
+  2 * minute,
   5 * minute,
   10 * minute,
   30 * minute,

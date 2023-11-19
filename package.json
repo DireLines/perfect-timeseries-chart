@@ -4,7 +4,6 @@
   "description": "Perfect Timeseries Chart",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "author": "Nathaniel Saxe",
   "license": "MIT",
   "dependencies": {

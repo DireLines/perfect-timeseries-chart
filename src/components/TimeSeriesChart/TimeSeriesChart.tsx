@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+import React, { useRef, useState } from "react"
 import { mergeWith, sum, isNil } from "ramda"
 import { colorHash, invertColor } from "./color"
 import { closestNumber, closestTimeIncrement } from "./timeUnits"
@@ -127,6 +127,7 @@ export type TimeSeriesChartData = {
   textures: boolean
   backgroundColor: string
   onBarHover: (any) => void
+  onTimeRangeChange: (start: number, end: number) => void
 }
 
 export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
@@ -175,7 +176,7 @@ const getDisplayColor: (column: string, value: string) => string = (
 }
 
 const countDisplayIncrements = [
-  1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000,
+  1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000,
   1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000, 200000000, 500000000,
   1000000000, 2000000000, 5000000000, 10000000000,
 ]
@@ -207,6 +208,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     children: null,
     backgroundColor: "#202027",
     onBarHover: () => {},
+    onTimeRangeChange: () => {},
   }
 }
 const range = (start: number, end: number, step: number) => {
@@ -231,8 +233,23 @@ const toEpochMs = (date: Time) => {
 
 const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
 const nearestMultipleAbove = (value, step) => Math.ceil(value / step) * step
-const createSvg = (chartProps: TimeSeriesChartData) => {
+const createSvg = ({
+  chartProps,
+  interactivity,
+}: {
+  chartProps: TimeSeriesChartData
+  interactivity: any
+}) => {
   const { data, columnName, numBins, start, end, backgroundColor, onBarHover } = chartProps
+  const {
+    isDragging,
+    dragEnd,
+    dragStart,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleMouseLeave,
+  } = interactivity
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
   const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
@@ -278,7 +295,15 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
       {/* Background rectangle */}
-      <rect width="100%" height="100%" fill={backgroundColor} />
+      <rect
+        width="100%"
+        height="100%"
+        fill={backgroundColor}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={(event) => handleMouseUp(event, pixelToTime)}
+        onMouseLeave={handleMouseLeave}
+      />
       {/* axes */}
       <line
         stroke={indicatorColor}
@@ -297,6 +322,7 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             x2={width - columnPadX}
             y2={countToPixel(count)}
             opacity={0.3}
+            pointerEvents={"none"}
           />
           <text
             x={columnPadX - 8}
@@ -304,6 +330,12 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
             textAnchor="end"
             fontSize="18"
             fill={indicatorColor}
+            style={{
+              WebkitUserSelect: "none",
+              MozUserSelect: "none",
+              msUserSelect: "none",
+              userSelect: "none",
+            }}
           >
             {abbreviateNumber(count)}
           </text>
@@ -320,26 +352,34 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           }
           const currentRectHeight = getPixelHeight(count)
           const padding = 0.93
+          const rect = (
+            <rect
+              x={Math.round((barWidth * (1 - padding)) / 2)}
+              y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
+              width={Math.ceil(barWidth * padding)}
+              height={currentRectHeight} // Scale the height based on the value
+              fill={getDisplayColor(columnName, value)} // Set the color of the bar
+              onMouseOver={() => onBarHover({ columnName, value, count, time: point.time })}
+              pointerEvents={isDragging ? "none" : "auto"}
+            />
+          )
           rects.push(
-            <Tooltip
-              title={
-                <>
-                  {columnName}: {value}{" "}
-                  <div style={{ fontWeight: "bold" }}>{abbreviateNumber(count)}</div>
-                </>
-              }
-              placement="right"
-              arrow
-            >
-              <rect
-                x={Math.round((barWidth * (1 - padding)) / 2)}
-                y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
-                width={Math.ceil(barWidth * padding)}
-                height={currentRectHeight} // Scale the height based on the value
-                fill={getDisplayColor(columnName, value)} // Set the color of the bar
-                onMouseOver={() => onBarHover({ columnName, value, count, time: point.time })}
-              />
-            </Tooltip>
+            isDragging ? (
+              rect
+            ) : (
+              <Tooltip
+                title={
+                  <>
+                    {columnName}: {value}{" "}
+                    <div style={{ fontWeight: "bold" }}>{abbreviateNumber(count)}</div>
+                  </>
+                }
+                placement="right"
+                arrow
+              >
+                {rect}
+              </Tooltip>
+            )
           )
           totalHeight += currentRectHeight
         }
@@ -356,7 +396,19 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
                   x2={0}
                   y2={height - columnPadY}
                 />
-                <text x={0} y={height - 5} textAnchor="middle" fontSize="16" fill={indicatorColor}>
+                <text
+                  x={0}
+                  y={height - 5}
+                  textAnchor="middle"
+                  fontSize="16"
+                  fill={indicatorColor}
+                  style={{
+                    WebkitUserSelect: "none",
+                    MozUserSelect: "none",
+                    msUserSelect: "none",
+                    userSelect: "none",
+                  }}
+                >
                   {new Date(point.time).toTimeString().split(" ")[0]}
                 </text>
               </>
@@ -372,6 +424,19 @@ const createSvg = (chartProps: TimeSeriesChartData) => {
           </g>
         )
       })}
+      {/* Drag selection */}
+      {isDragging && dragStart !== null && dragEnd !== null && (
+        <>
+          <rect
+            x={Math.min(dragStart, dragEnd)}
+            width={Math.abs(dragEnd - dragStart)}
+            y={columnPadY}
+            height={dispHeight}
+            fill="rgba(128,128,128, 0.3)"
+            style={{ pointerEvents: "none" }}
+          />
+        </>
+      )}
     </svg>
   )
 }
@@ -402,10 +467,75 @@ const createLegend = (chartProps: TimeSeriesChartData) => {
 }
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
   const ref = useRef(null)
-  const chartProps = { ...defaultProps(data), ...rest }
+  const [dragStart, setDragStart] = useState<number | null>(null)
+  const [dragEnd, setDragEnd] = useState<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  let chartProps = { ...defaultProps(data), ...rest }
+  const [start, setStart] = useState(chartProps.start)
+  const [end, setEnd] = useState(chartProps.end)
+  chartProps = { ...chartProps, start, end }
+  const zoom = (newStart: number, newEnd: number) => {
+    console.log(`zooming to ${newStart} - ${newEnd}`)
+    setStart(newStart)
+    setEnd(newEnd)
+  }
+  const { clickAndDragToZoom } = chartProps.navigation
+  const onTimeRangeChange = zoom
+  const handleMouseDown = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    if (!clickAndDragToZoom) {
+      return
+    }
+    const svgRect = event.currentTarget.getBoundingClientRect()
+    const x = Math.round((event.clientX - svgRect.left) * (1200 / svgRect.width)) // Or use another method to calculate relative position
+    setDragStart(x)
+    setDragEnd(x)
+    setIsDragging(true)
+  }
+
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    if (!clickAndDragToZoom) return
+    if (!isDragging) return
+    const svgRect = event.currentTarget.getBoundingClientRect()
+    const x = Math.round((event.clientX - svgRect.left) * (1200 / svgRect.width)) // Or use another method to calculate relative position
+    setDragEnd(x)
+    event.stopPropagation()
+  }
+
+  const handleMouseUp = (
+    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+    pixelToTime: (number) => number
+  ) => {
+    if (!clickAndDragToZoom) return
+    if (!isDragging) return
+    const newStart = min(pixelToTime(dragStart), pixelToTime(dragEnd))
+    const newEnd = max(pixelToTime(dragStart), pixelToTime(dragEnd))
+    onTimeRangeChange(newStart, newEnd)
+    setIsDragging(false)
+    setDragStart(null)
+    setDragEnd(null)
+  }
+  const handleMouseLeave = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    if (!clickAndDragToZoom) return
+    if (!isDragging) return
+    setIsDragging(false)
+    setDragStart(null)
+    setDragEnd(null)
+  }
+
   return (
     <div ref={ref} style={{ margin: "auto", width: "80%", height: "100%" }}>
-      {createSvg(chartProps)}
+      {createSvg({
+        chartProps,
+        interactivity: {
+          dragEnd,
+          dragStart,
+          isDragging,
+          handleMouseDown,
+          handleMouseMove,
+          handleMouseUp,
+          handleMouseLeave,
+        },
+      })}
       {createLegend(chartProps)}
       {children}
     </div>
