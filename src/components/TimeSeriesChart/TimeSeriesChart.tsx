@@ -538,7 +538,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
       setDragStart(null)
       setDragEnd(null)
     }
-    console.log("scrolling")
     const svgRect = event.currentTarget.getBoundingClientRect()
     const x = Math.round((event.clientX - svgRect.left) * (svgViewportWidth / svgRect.width))
     const time = pixelToTime(x)
