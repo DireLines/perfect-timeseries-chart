@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react"
-import { mergeWith, sum, isNil } from "ramda"
+import React, { useState } from "react"
+import { mergeWith, sum, isNil, filter } from "ramda"
 import { colorHash, invertColor } from "./color"
 import { closestNumber, closestTimeIncrement } from "./timeUnits"
 import Tooltip from "@mui/material/Tooltip"
@@ -233,6 +233,8 @@ const toEpochMs = (date: Time) => {
 
 const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
 const nearestMultipleAbove = (value, step) => Math.ceil(value / step) * step
+const svgViewportWidth = 1200
+const svgViewportHeight = 400
 const createSvg = ({
   chartProps,
   interactivity,
@@ -249,6 +251,7 @@ const createSvg = ({
     handleMouseMove,
     handleMouseUp,
     handleMouseLeave,
+    handleMouseScroll,
   } = interactivity
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
@@ -270,8 +273,8 @@ const createSvg = ({
   const dispStartTime = min(...displayData.map(({ time }) => time))
   const dispEndTime = max(...displayData.map(({ time }) => time))
   // total SVG dimensions
-  const width = 1200
-  const height = 400
+  const width = svgViewportWidth
+  const height = svgViewportHeight
   //dimensions for part of SVG in which bars can be drawn
   //leave room for axis markers and padding
   const dispWidth = Math.round(width * 0.9)
@@ -303,6 +306,7 @@ const createSvg = ({
         onMouseMove={handleMouseMove}
         onMouseUp={(event) => handleMouseUp(event, pixelToTime)}
         onMouseLeave={handleMouseLeave}
+        // onWheel={(event) => handleMouseScroll(event, pixelToTime)}
       />
       {/* axes */}
       <line
@@ -441,9 +445,12 @@ const createSvg = ({
   )
 }
 const createLegend = (chartProps: TimeSeriesChartData) => {
-  const { data, columnName } = chartProps
+  const { data, columnName, start, end } = chartProps
+  const dataInRange = data
+    .filter(({ time }) => toEpochMs(start) <= toEpochMs(time) && toEpochMs(end) >= toEpochMs(time))
+    .map(({ time, counts }) => ({ time, counts: filter((v) => v > 0, counts) }))
   const values: any = {}
-  for (const elem of data) {
+  for (const elem of dataInRange) {
     for (const k in elem.counts) {
       if (!(k in values)) {
         values[k] = getDisplayColor(columnName, k)
@@ -466,27 +473,25 @@ const createLegend = (chartProps: TimeSeriesChartData) => {
   )
 }
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children, ...rest }) => {
-  const ref = useRef(null)
   const [dragStart, setDragStart] = useState<number | null>(null)
   const [dragEnd, setDragEnd] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   let chartProps = { ...defaultProps(data), ...rest }
-  const [start, setStart] = useState(chartProps.start)
-  const [end, setEnd] = useState(chartProps.end)
-  chartProps = { ...chartProps, start, end }
+  const [range, setRange] = useState({ start: chartProps.start, end: chartProps.end })
+  chartProps = { ...chartProps, start: range.start, end: range.end }
   const zoom = (newStart: number, newEnd: number) => {
     console.log(`zooming to ${newStart} - ${newEnd}`)
-    setStart(newStart)
-    setEnd(newEnd)
+    setRange({ start: newStart, end: newEnd })
   }
-  const { clickAndDragToZoom } = chartProps.navigation
+  const { clickAndDragToZoom, scrollToZoom } = chartProps.navigation
   const onTimeRangeChange = zoom
   const handleMouseDown = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (!clickAndDragToZoom) {
       return
     }
     const svgRect = event.currentTarget.getBoundingClientRect()
-    const x = Math.round((event.clientX - svgRect.left) * (1200 / svgRect.width)) // Or use another method to calculate relative position
+    //transform event x into svg coordinates
+    const x = Math.round((event.clientX - svgRect.left) * (svgViewportWidth / svgRect.width))
     setDragStart(x)
     setDragEnd(x)
     setIsDragging(true)
@@ -496,7 +501,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     if (!clickAndDragToZoom) return
     if (!isDragging) return
     const svgRect = event.currentTarget.getBoundingClientRect()
-    const x = Math.round((event.clientX - svgRect.left) * (1200 / svgRect.width)) // Or use another method to calculate relative position
+    //transform event x into svg coordinates
+    const x = Math.round((event.clientX - svgRect.left) * (svgViewportWidth / svgRect.width))
     setDragEnd(x)
     event.stopPropagation()
   }
@@ -521,9 +527,32 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     setDragStart(null)
     setDragEnd(null)
   }
+  const scrollFactor = 1.001
+  const handleMouseScroll = (
+    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+    pixelToTime: (number) => number
+  ) => {
+    if (!scrollToZoom) return
+    if (isDragging) {
+      setIsDragging(false)
+      setDragStart(null)
+      setDragEnd(null)
+    }
+    console.log("scrolling")
+    const svgRect = event.currentTarget.getBoundingClientRect()
+    const x = Math.round((event.clientX - svgRect.left) * (svgViewportWidth / svgRect.width))
+    const time = pixelToTime(x)
+    const distToStart = Math.abs(time - toEpochMs(range.start))
+    const newDistToStart = Math.round(distToStart * scrollFactor)
+    const newStart = time - newDistToStart
+    const distToEnd = Math.abs(time - toEpochMs(range.end))
+    const newDistToEnd = Math.round(distToEnd * scrollFactor)
+    const newEnd = time - newDistToEnd
+    setRange({ start: newStart, end: newEnd })
+  }
 
   return (
-    <div ref={ref} style={{ margin: "auto", width: "80%", height: "100%" }}>
+    <div style={{ margin: "auto", width: "80%", height: "100%" }}>
       {createSvg({
         chartProps,
         interactivity: {
@@ -534,6 +563,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
           handleMouseMove,
           handleMouseUp,
           handleMouseLeave,
+          handleMouseScroll,
         },
       })}
       {createLegend(chartProps)}
