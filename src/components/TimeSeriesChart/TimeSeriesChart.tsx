@@ -5,17 +5,6 @@ import { closestNumber, closestTimeIncrement } from "./timeUnits"
 import Tooltip from "@mui/material/Tooltip"
 export type Time = number | Date
 
-const elapsedTimeLogger = (namespace) => {
-  let startTimeThisStage = Date.now()
-  const prefix = namespace ? `${namespace}: ` : ""
-  return (message) => {
-    const now = Date.now()
-    const elapsed = now - startTimeThisStage
-    startTimeThisStage = now
-    console.log(`${prefix}${message} took ${elapsed} ms`)
-  }
-}
-
 //the purest format of time series data
 //list of counts for different values at a set of timestamps
 export type TimeSeries = {
@@ -474,7 +463,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   const [range, setRange] = useState({ start: chartProps.start, end: chartProps.end })
   chartProps = { ...chartProps, start: range.start, end: range.end }
   const zoom = (newStart: number, newEnd: number) => {
-    console.log(`zooming to ${newStart} - ${newEnd}`)
     setRange({ start: newStart, end: newEnd })
   }
   const { clickAndDragToZoom, scrollToZoom } = chartProps.navigation
@@ -569,7 +557,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     return buckets.map((bucket, index) => ({ time: times[index], counts: bucket }))
   }, [data, start, end, numBins])
   chartProps = { ...chartProps, data: displayData }
-  const logElapsedTime = elapsedTimeLogger("render")
   const svg = createSvg({
     chartProps,
     interactivity: {
@@ -583,9 +570,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
       handleMouseScroll,
     },
   })
-  logElapsedTime("create svg")
   const legend = createLegend(chartProps)
-  logElapsedTime("create legend")
   return (
     <div style={{ margin: "auto", width: "80%", height: "100%" }}>
       {svg}
