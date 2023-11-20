@@ -1,9 +1,20 @@
-import React, { useState } from "react"
-import { mergeWith, sum, isNil, filter } from "ramda"
+import React, { useMemo, useState } from "react"
+import { sum, isNil, filter } from "ramda"
 import { colorHash, invertColor } from "./color"
 import { closestNumber, closestTimeIncrement } from "./timeUnits"
 import Tooltip from "@mui/material/Tooltip"
 export type Time = number | Date
+
+const elapsedTimeLogger = (namespace) => {
+  let startTimeThisStage = Date.now()
+  const prefix = namespace ? `${namespace}: ` : ""
+  return (message) => {
+    const now = Date.now()
+    const elapsed = now - startTimeThisStage
+    startTimeThisStage = now
+    console.log(`${prefix}${message} took ${elapsed} ms`)
+  }
+}
 
 //the purest format of time series data
 //list of counts for different values at a set of timestamps
@@ -211,7 +222,7 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     onTimeRangeChange: () => {},
   }
 }
-const range = (start: number, end: number, step: number) => {
+const rangeNums = (start: number, end: number, step: number) => {
   let s = min(start, end)
   let e = max(start, end)
   const result: number[] = []
@@ -253,25 +264,8 @@ const createSvg = ({
     handleMouseLeave,
     handleMouseScroll,
   } = interactivity
-  const startTime = toEpochMs(start)
-  const endTime = toEpochMs(end)
-  const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
-  const times = range(
-    nearestMultipleBelow(startTime, binSizeMs),
-    nearestMultipleAbove(endTime, binSizeMs),
-    binSizeMs
-  )
-  const displayData = times.map((timestamp) => {
-    const bucketStart = timestamp
-    const bucketEnd = timestamp + binSizeMs
-    const bucketData = data
-      .filter((item) => bucketStart <= toEpochMs(item.time) && toEpochMs(item.time) < bucketEnd)
-      .map((item) => item.counts)
-      .reduce((curr, next) => mergeWith((a, b) => a + b, curr, next), {})
-    return { time: timestamp, counts: bucketData }
-  })
-  const dispStartTime = min(...displayData.map(({ time }) => time))
-  const dispEndTime = max(...displayData.map(({ time }) => time))
+  const dispStartTime = min(...data.map(({ time }) => toEpochMs(time)))
+  const dispEndTime = max(...data.map(({ time }) => toEpochMs(time)))
   // total SVG dimensions
   const width = svgViewportWidth
   const height = svgViewportHeight
@@ -281,11 +275,11 @@ const createSvg = ({
   const dispHeight = Math.round(height * 0.82)
   const columnPadY = Math.round((height - dispHeight) / 2)
   const columnPadX = Math.round((width - dispWidth) / 2)
-  const barWidth = Math.ceil(dispWidth / displayData.length)
-  const tallestBarTotalCount = max(...displayData.map(({ counts }) => sum(Object.values(counts))))
+  const barWidth = Math.ceil(dispWidth / data.length)
+  const tallestBarTotalCount = max(...data.map(({ counts }) => sum(Object.values(counts))))
   const countDisplayIncrement = closestNumber(tallestBarTotalCount / 4, countDisplayIncrements)
   const countsToIndicate = [
-    ...range(0, tallestBarTotalCount - countDisplayIncrement / 2, countDisplayIncrement),
+    ...rangeNums(0, tallestBarTotalCount - countDisplayIncrement / 2, countDisplayIncrement),
     tallestBarTotalCount,
   ]
   const getPixelHeight = (count: number) => Math.round((count / tallestBarTotalCount) * dispHeight)
@@ -346,7 +340,7 @@ const createSvg = ({
         </>
       ))}
       {/* Data rects */}
-      {displayData.map((point, index) => {
+      {data.map((point, index) => {
         const rects: any[] = []
         let totalHeight = 0
         for (const value in point.counts) {
@@ -387,7 +381,7 @@ const createSvg = ({
           )
           totalHeight += currentRectHeight
         }
-        const x = timeToPixel(point.time)
+        const x = timeToPixel(toEpochMs(point.time))
         return (
           <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
@@ -549,23 +543,53 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     const newEnd = time - newDistToEnd
     setRange({ start: newStart, end: newEnd })
   }
+  const { start, end, numBins } = chartProps
+  const displayData = useMemo(() => {
+    const startTime = toEpochMs(start)
+    const endTime = toEpochMs(end)
+    const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
 
+    const times = rangeNums(
+      nearestMultipleBelow(startTime, binSizeMs),
+      nearestMultipleAbove(endTime, binSizeMs),
+      binSizeMs
+    )
+    const timestampToIndex = (timestamp) => Math.floor((timestamp - times[0]) / binSizeMs)
+    const buckets = times.map(() => ({}))
+    let numMerges = 0
+    for (const item of chartProps.data) {
+      const index = timestampToIndex(toEpochMs(item.time))
+      if (0 <= index && index < buckets.length) {
+        numMerges++
+        Object.entries(item.counts).forEach(([color, count]) => {
+          buckets[index][color] = (buckets[index][color] || 0) + count
+        })
+      }
+    }
+    return buckets.map((bucket, index) => ({ time: times[index], counts: bucket }))
+  }, [data, start, end, numBins])
+  chartProps = { ...chartProps, data: displayData }
+  const logElapsedTime = elapsedTimeLogger("render")
+  const svg = createSvg({
+    chartProps,
+    interactivity: {
+      dragEnd,
+      dragStart,
+      isDragging,
+      handleMouseDown,
+      handleMouseMove,
+      handleMouseUp,
+      handleMouseLeave,
+      handleMouseScroll,
+    },
+  })
+  logElapsedTime("create svg")
+  const legend = createLegend(chartProps)
+  logElapsedTime("create legend")
   return (
     <div style={{ margin: "auto", width: "80%", height: "100%" }}>
-      {createSvg({
-        chartProps,
-        interactivity: {
-          dragEnd,
-          dragStart,
-          isDragging,
-          handleMouseDown,
-          handleMouseMove,
-          handleMouseUp,
-          handleMouseLeave,
-          handleMouseScroll,
-        },
-      })}
-      {createLegend(chartProps)}
+      {svg}
+      {legend}
       {children}
     </div>
   )
