@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { sum, isNil, filter } from "ramda"
 import { colorHash, invertColor } from "./color.js"
 import { closestNumber, closestTimeIncrement, getDisplayInterval, timeLabel } from "./timeUnits.js"
 import Tooltip from "@mui/material/Tooltip"
+const min = Math.min
+const max = Math.max
+
 export type Time = number | Date
 
 //the purest format of time series data
@@ -126,8 +129,8 @@ export type TimeSeriesChartData = {
   logLevelPresetColors: boolean
   textures: boolean
   backgroundColor: string
-  onBarHover: (any) => void
-  onTimeRangeChange: (start: number, end: number) => void
+  onBarHover: ((any) => void) | undefined
+  onTimeRangeChange: ((start: number, end: number) => void) | undefined
 }
 
 export type TimeSeriesChartProps = Partial<TimeSeriesChartData>
@@ -187,9 +190,6 @@ const abbreviateNumber = (n: number) =>
     maximumFractionDigits: 1,
   }).format(n)
 
-const min = Math.min
-const max = Math.max
-
 const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
   const dataMin = min(...data.map(({ time }) => time))
   const dataMax = max(...data.map(({ time }) => time))
@@ -207,8 +207,8 @@ const defaultProps: (TimeSeriesData) => TimeSeriesChartData = (data) => {
     textures: false,
     children: null,
     backgroundColor: "#202027",
-    onBarHover: () => {},
-    onTimeRangeChange: () => {},
+    onBarHover: undefined,
+    onTimeRangeChange: undefined,
   }
 }
 const rangeNums = (start: number, end: number, step: number) => {
@@ -242,7 +242,8 @@ const createSvg = ({
   chartProps: TimeSeriesChartData
   interactivity: any
 }) => {
-  const { data, columnName, numBins, start, end, backgroundColor, onBarHover } = chartProps
+  const { data, columnName, numBins, start, end, backgroundColor } = chartProps
+  const onBarHover = chartProps?.onBarHover ?? (() => {})
   const {
     isDragging,
     dragEnd,
@@ -464,12 +465,15 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   const [isDragging, setIsDragging] = useState(false)
   let chartProps = { ...defaultProps(data), ...rest }
   const [range, setRange] = useState({ start: chartProps.start, end: chartProps.end })
-  chartProps = { ...chartProps, start: range.start, end: range.end }
-  const zoom = (newStart: number, newEnd: number) => {
+  useEffect(() => {
+    setRange({ start: chartProps.start, end: chartProps.end })
+  }, [chartProps.start, chartProps.end])
+  const zoom = (newStart, newEnd) => {
+    console.log("zooming")
     setRange({ start: newStart, end: newEnd })
   }
   const { clickAndDragToZoom, scrollToZoom } = chartProps.navigation
-  const onTimeRangeChange = zoom
+  const onRangeChangeInternal = chartProps?.onTimeRangeChange ?? zoom
   const handleMouseDown = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (!clickAndDragToZoom) {
       return
@@ -500,7 +504,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     if (!isDragging) return
     const newStart = min(pixelToTime(dragStart), pixelToTime(dragEnd))
     const newEnd = max(pixelToTime(dragStart), pixelToTime(dragEnd))
-    onTimeRangeChange(newStart, newEnd)
+    onRangeChangeInternal(newStart, newEnd)
     setIsDragging(false)
     setDragStart(null)
     setDragEnd(null)
@@ -526,18 +530,21 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     const svgRect = event.currentTarget.getBoundingClientRect()
     const x = Math.round((event.clientX - svgRect.left) * (svgViewportWidth / svgRect.width))
     const time = pixelToTime(x)
-    const distToStart = Math.abs(time - toEpochMs(range.start))
+    const distToStart = Math.abs(time - toEpochMs(start))
     const newDistToStart = Math.round(distToStart * scrollFactor)
     const newStart = time - newDistToStart
-    const distToEnd = Math.abs(time - toEpochMs(range.end))
+    const distToEnd = Math.abs(time - toEpochMs(end))
     const newDistToEnd = Math.round(distToEnd * scrollFactor)
     const newEnd = time - newDistToEnd
-    setRange({ start: newStart, end: newEnd })
+    onRangeChangeInternal(newStart, newEnd)
   }
   const { start, end, numBins } = chartProps
   const displayData = useMemo(() => {
-    const startTime = toEpochMs(start)
-    const endTime = toEpochMs(end)
+    const internalStart = chartProps.onTimeRangeChange ? start : range.start
+    const internalEnd = chartProps.onTimeRangeChange ? end : range.end
+    console.log("rebucketing data")
+    const startTime = toEpochMs(internalStart)
+    const endTime = toEpochMs(internalEnd)
     const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
 
     const times = rangeNums(
@@ -558,8 +565,12 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
       }
     }
     return buckets.map((bucket, index) => ({ time: times[index], counts: bucket }))
-  }, [data, start, end, numBins])
+  }, [data, range, start, end, numBins])
   chartProps = { ...chartProps, data: displayData }
+  if (!chartProps.onTimeRangeChange) {
+    chartProps.start = range.start
+    chartProps.end = range.end
+  }
   const svg = createSvg({
     chartProps,
     interactivity: {

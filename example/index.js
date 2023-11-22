@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import ReactDOM from "react-dom"
 import { TimeSeriesChart } from "../dist"
 const second = 1000
@@ -82,13 +82,33 @@ const data = [
     },
   },
 ]
-const start = Date.now() - 5 * hour
-const end = Date.now()
+const Dashboard = () => {
+  const [range, setRange] = useState({ start: Date.now() - 5 * day, end: Date.now() })
+  return (
+    <>
+      <TimeSeriesChart
+        data={data}
+        start={range.start}
+        end={range.end}
+        onTimeRangeChange={(s, e) => {
+          console.log("onTimeRangeChange", s, e)
+          setRange({ start: s, end: e })
+        }}
+        columnName="color"
+      />
+      <TimeSeriesChart
+        data={bigData}
+        start={range.start}
+        end={range.end}
+        onTimeRangeChange={() => {}}
+      />
+    </>
+  )
+}
 ReactDOM.render(
   <>
     <TimeSeriesChart data={data} />
-    <TimeSeriesChart data={data} start={start} end={end} columnName="color" />
-    <TimeSeriesChart data={bigData} />
+    <Dashboard />
   </>,
   document.getElementById("app")
 )
