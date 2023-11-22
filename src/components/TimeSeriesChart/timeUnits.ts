@@ -135,8 +135,8 @@ const getTimeFormat = (binSizeMs: number, index: number) => {
 export const getDisplayInterval = (binSizeMs: number) =>
   closestNumber(5 * binSizeMs, allowedDisplayIntervals)
 export const timeLabel = (timestamp: number | Date, binSizeMs: number, index: number) => {
-  // console.log("binSize", binSizeMs)
-  // console.log("format", getTimeFormat(binSizeMs, index))
+  console.log("binSize", binSizeMs)
+  console.log("format", getTimeFormat(binSizeMs, index))
   return formatDate(getTimeFormat(binSizeMs, index), timestamp)
 }
 export const closestNumber = (n: number, nums: number[]) => {

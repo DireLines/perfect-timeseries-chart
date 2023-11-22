@@ -91,7 +91,6 @@ const Dashboard = () => {
         start={range.start}
         end={range.end}
         onTimeRangeChange={(s, e) => {
-          console.log("onTimeRangeChange", s, e)
           setRange({ start: s, end: e })
         }}
         columnName="color"

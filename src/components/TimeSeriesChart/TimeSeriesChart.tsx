@@ -469,7 +469,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     setRange({ start: chartProps.start, end: chartProps.end })
   }, [chartProps.start, chartProps.end])
   const zoom = (newStart, newEnd) => {
-    console.log("zooming")
     setRange({ start: newStart, end: newEnd })
   }
   const { clickAndDragToZoom, scrollToZoom } = chartProps.navigation
@@ -542,7 +541,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   const displayData = useMemo(() => {
     const internalStart = chartProps.onTimeRangeChange ? start : range.start
     const internalEnd = chartProps.onTimeRangeChange ? end : range.end
-    console.log("rebucketing data")
     const startTime = toEpochMs(internalStart)
     const endTime = toEpochMs(internalEnd)
     const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
