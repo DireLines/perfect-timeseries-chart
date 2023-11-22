@@ -4,6 +4,9 @@ import { TimeSeriesChart } from "../dist"
 const second = 1000
 const minute = 60 * second
 const hour = 60 * minute
+const day = 24 * hour
+const week = 7 * day
+const month = 30 * day
 const generateRandomString = (length) => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
   const charactersLength = characters.length
@@ -42,7 +45,7 @@ const makeBigData = ({
   }
   return result
 }
-const bigData = makeBigData({ countMultiplier: 100, numColumns: 10000, timeSpacing: second })
+const bigData = makeBigData({ countMultiplier: 100, numColumns: 10000, timeSpacing: week })
 const data = [
   {
     time: Date.now(),
@@ -85,7 +88,7 @@ ReactDOM.render(
   <>
     <TimeSeriesChart data={data} />
     <TimeSeriesChart data={data} start={start} end={end} columnName="color" />
-    <TimeSeriesChart data={bigData} start={start} end={end} />
+    <TimeSeriesChart data={bigData} />
   </>,
   document.getElementById("app")
 )

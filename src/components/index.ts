@@ -1,3 +1,3 @@
 // make sure you import all components into this file
-
-export * from "./TimeSeriesChart"
+import { TimeSeriesChart } from "./TimeSeriesChart"
+export { TimeSeriesChart }

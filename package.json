@@ -5,7 +5,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Nathaniel Saxe",
-  "type": "module",
   "license": "MIT",
   "dependencies": {
     "@emotion/react": "^11.11.1",

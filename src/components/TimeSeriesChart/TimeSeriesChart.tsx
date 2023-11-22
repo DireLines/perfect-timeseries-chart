@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react"
 import { sum, isNil, filter } from "ramda"
-import { colorHash, invertColor } from "./color"
-import { closestNumber, closestTimeIncrement } from "./timeUnits"
+import { colorHash, invertColor } from "./color.js"
+import { closestNumber, closestTimeIncrement, getDisplayInterval, timeLabel } from "./timeUnits.js"
 import Tooltip from "@mui/material/Tooltip"
 export type Time = number | Date
 
@@ -253,6 +253,9 @@ const createSvg = ({
     handleMouseLeave,
     handleMouseScroll,
   } = interactivity
+  const startTime = toEpochMs(start)
+  const endTime = toEpochMs(end)
+  const binSizeMs = closestTimeIncrement(Math.round((endTime - startTime) / numBins))
   const dispStartTime = min(...data.map(({ time }) => toEpochMs(time)))
   const dispEndTime = max(...data.map(({ time }) => toEpochMs(time)))
   // total SVG dimensions
@@ -374,7 +377,7 @@ const createSvg = ({
         return (
           <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
-            {index % 5 === 0 ? (
+            {toEpochMs(point.time) % getDisplayInterval(binSizeMs) === 0 ? (
               <>
                 <line
                   stroke={indicatorColor}
@@ -396,7 +399,7 @@ const createSvg = ({
                     userSelect: "none",
                   }}
                 >
-                  {new Date(point.time).toTimeString().split(" ")[0]}
+                  {timeLabel(point.time, binSizeMs, index)}
                 </text>
               </>
             ) : (
