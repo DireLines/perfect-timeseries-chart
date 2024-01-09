@@ -580,9 +580,11 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   ) => {
     if (!clickAndDragToZoom) return
     if (!isDragging) return
-    const newStart = min(pixelToTime(dragStart), pixelToTime(dragEnd))
-    const newEnd = max(pixelToTime(dragStart), pixelToTime(dragEnd))
-    onRangeChangeInternal(newStart, newEnd)
+    if (dragEnd !== dragStart) {
+      const newStart = min(pixelToTime(dragStart), pixelToTime(dragEnd))
+      const newEnd = max(pixelToTime(dragStart), pixelToTime(dragEnd))
+      onRangeChangeInternal(newStart, newEnd)
+    }
     setIsDragging(false)
     setDragStart(null)
     setDragEnd(null)
