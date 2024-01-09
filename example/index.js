@@ -82,6 +82,40 @@ const data = [
     },
   },
 ]
+const logData = [
+  {
+    time: Date.now(),
+    counts: {
+      info: 5,
+      warn: 8,
+      error: 11,
+    },
+  },
+  {
+    time: Date.now() - 1 * hour,
+    counts: {
+      info: 1,
+      warn: 2,
+      error: 3,
+    },
+  },
+  {
+    time: Date.now() - 2 * hour,
+    counts: {
+      error: 0,
+      info: 8,
+      warn: 5,
+    },
+  },
+  {
+    time: Date.now() - 3 * hour,
+    counts: {
+      info: 8,
+      warn: 4,
+      error: 0,
+    },
+  },
+]
 const Dashboard = () => {
   const [range, setRange] = useState({ start: Date.now() - 5 * day, end: Date.now() })
   return (
@@ -101,7 +135,7 @@ const Dashboard = () => {
 }
 ReactDOM.render(
   <>
-    <TimeSeriesChart data={data} />
+    <TimeSeriesChart data={logData} columnName="level" />
     <Dashboard />
   </>,
   document.getElementById("app")

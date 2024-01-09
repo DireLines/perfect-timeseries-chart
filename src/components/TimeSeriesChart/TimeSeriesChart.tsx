@@ -174,15 +174,18 @@ const commonHtmlColors = [
   "yellow",
 ]
 
-const getDisplayColor: (column: string, value: string) => string = (
-  column: string,
-  value: string
-) => {
-  if (commonHtmlColors.includes(value)) {
-    return value
+const getDisplayColor: (
+  useLogLevelPresetColors: boolean
+) => (column: string, value: string) => string =
+  (useLogLevelPresetColors: boolean) => (column: string, value: string) => {
+    if (useLogLevelPresetColors && value in logLevelColors) {
+      return logLevelColors[value]
+    }
+    if (commonHtmlColors.includes(value)) {
+      return value
+    }
+    return colorHash(`${column}:${value}`)
   }
-  return colorHash(`${column}:${value}`)
-}
 
 const countDisplayIncrements = [
   1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000,
@@ -248,7 +251,8 @@ const createSvg = ({
   chartProps: TimeSeriesChartData
   interactivity: any
 }) => {
-  const { data, columnName, numBins, start, end, backgroundColor } = chartProps
+  const { data, columnName, numBins, start, end, backgroundColor, logLevelPresetColors } =
+    chartProps
   const onBarHover = chartProps?.onBarHover ?? (() => {})
   const {
     isDragging,
@@ -259,6 +263,8 @@ const createSvg = ({
     handleMouseUp,
     handleMouseLeave,
     handleMouseScroll,
+    focusedGroups,
+    setFocusedGroups,
   } = interactivity
   const startTime = toEpochMs(start)
   const endTime = toEpochMs(end)
@@ -275,7 +281,27 @@ const createSvg = ({
   const columnPadY = Math.round((height - dispHeight) / 2)
   const columnPadX = Math.round((width - dispWidth) / 2)
   const barWidth = Math.ceil(dispWidth / data.length)
-  const tallestBarTotalCount = max(...data.map(({ counts }) => sum(Object.values(counts))))
+  const shouldDisplay = (value) => {
+    if (focusedGroups.size > 0 && !focusedGroups.has(value)) {
+      return false
+    }
+    return true
+  }
+  const filterKeyValues = (pred, obj) => {
+    const result = {}
+    for (const k in obj) {
+      const v = obj[k]
+      if (pred(k, v)) {
+        result[k] = v
+      }
+    }
+    return result
+  }
+  const tallestBarTotalCount = max(
+    ...data.map(({ counts }) =>
+      sum(Object.values(filterKeyValues((k, _) => shouldDisplay(k), counts)))
+    )
+  )
   const countDisplayIncrement = closestNumber(tallestBarTotalCount / 4, countDisplayIncrements)
   const countsToIndicate = [
     ...rangeNums(0, tallestBarTotalCount - countDisplayIncrement / 2, countDisplayIncrement),
@@ -289,8 +315,6 @@ const createSvg = ({
     Math.round(((pixel - columnPadX) / dispWidth) * (dispEndTime - dispStartTime)) + dispStartTime
   const indicatorColor = invertColor(backgroundColor)
   const timeMarkers = getTimeMarkers(dispStartTime, dispEndTime)
-  const timestamps = new Set(data.map((x) => toEpochMs(x.time)))
-  console.log(timestamps)
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
       {/* Background rectangle */}
@@ -344,10 +368,15 @@ const createSvg = ({
       {/* Data rects */}
       {data.map((point, index) => {
         const rects: any[] = []
+        const tStart = toEpochMs(point.time)
+        const tEnd = tStart + binSizeMs
         let totalHeight = 0
         for (const value in point.counts) {
           const count = point.counts[value]
           if (count === 0) {
+            continue
+          }
+          if (!shouldDisplay(value)) {
             continue
           }
           const currentRectHeight = getPixelHeight(count)
@@ -358,8 +387,15 @@ const createSvg = ({
               y={height - columnPadY - 1 - (currentRectHeight + totalHeight)} // Adjust the y position based on value
               width={Math.ceil(barWidth * padding)}
               height={currentRectHeight} // Scale the height based on the value
-              fill={getDisplayColor(columnName, value)} // Set the color of the bar
+              fill={getDisplayColor(logLevelPresetColors)(columnName, value)} // Set the color of the bar
               onMouseOver={() => onBarHover({ columnName, value, count, time: point.time })}
+              onMouseDown={() => {
+                if (focusedGroups.has(value)) {
+                  setFocusedGroups(new Set())
+                } else {
+                  setFocusedGroups(new Set([value]))
+                }
+              }}
               pointerEvents={isDragging ? "none" : "auto"}
             />
           )
@@ -370,7 +406,11 @@ const createSvg = ({
               <Tooltip
                 title={
                   <>
-                    {columnName}: {value}{" "}
+                    <div>{new Date(tStart).toLocaleString()} to </div>
+                    <div>{new Date(tEnd).toLocaleString()}</div>
+                    <div>
+                      {columnName}: {value}
+                    </div>
                     <div style={{ fontWeight: "bold" }}>{abbreviateNumber(count)}</div>
                   </>
                 }
@@ -383,7 +423,7 @@ const createSvg = ({
           )
           totalHeight += currentRectHeight
         }
-        const x = timeToPixel(toEpochMs(point.time))
+        const x = timeToPixel(tStart)
         return (
           <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
@@ -450,8 +490,23 @@ const createSvg = ({
     </svg>
   )
 }
-const createLegend = (chartProps: TimeSeriesChartData) => {
-  const { data, columnName, start, end } = chartProps
+const createLegend = ({
+  chartProps,
+  interactivity,
+}: {
+  chartProps: TimeSeriesChartData
+  interactivity: any
+}) => {
+  const { data, columnName, start, end, logLevelPresetColors } = chartProps
+  const {
+    focusedGroups,
+    handleIndicatorMouseDown,
+    handleIndicatorMouseMove,
+    handleIndicatorMouseLeave,
+    handleTextMouseDown,
+    handleTextMouseMove,
+    handleTextMouseLeave,
+  } = interactivity
   const dataInRange = data
     .filter(({ time }) => toEpochMs(start) <= toEpochMs(time) && toEpochMs(end) >= toEpochMs(time))
     .map(({ time, counts }) => ({ time, counts: filter((v) => v > 0, counts) }))
@@ -459,7 +514,7 @@ const createLegend = (chartProps: TimeSeriesChartData) => {
   for (const elem of dataInRange) {
     for (const k in elem.counts) {
       if (!(k in values)) {
-        values[k] = getDisplayColor(columnName, k)
+        values[k] = getDisplayColor(logLevelPresetColors)(columnName, k)
       }
     }
   }
@@ -471,7 +526,12 @@ const createLegend = (chartProps: TimeSeriesChartData) => {
     <ul style={{ listStyle: "none" }}>
       {vals.map(({ value, color }) => (
         <li style={{ float: "left", marginRight: "10px" }}>
-          <span style={{ color }}>█</span>
+          <span
+            style={{ color, cursor: "pointer" }}
+            onMouseDown={(event) => handleIndicatorMouseDown(event, value)}
+          >
+            {focusedGroups.has(value) || focusedGroups.size === 0 ? "█" : "▁"}
+          </span>
           {` - ${value}`}
         </li>
       ))}
@@ -482,6 +542,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
   const [dragStart, setDragStart] = useState<number | null>(null)
   const [dragEnd, setDragEnd] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [focusedGroups, setFocusedGroups] = useState(new Set()) //only display these groupings
   let chartProps = { ...defaultProps(data), ...rest }
   const [range, setRange] = useState({ start: chartProps.start, end: chartProps.end })
   useEffect(() => {
@@ -503,7 +564,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
     setDragEnd(x)
     setIsDragging(true)
   }
-
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (!clickAndDragToZoom) return
     if (!isDragging) return
@@ -599,9 +659,29 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data, children
       handleMouseUp,
       handleMouseLeave,
       handleMouseScroll,
+      focusedGroups,
+      setFocusedGroups,
     },
   })
-  const legend = createLegend(chartProps)
+  const handleLegendMouseDown = (
+    event: React.MouseEvent<SVGSVGElement, MouseEvent>,
+    value: string
+  ) => {
+    if (focusedGroups.has(value)) {
+      const s = new Set(focusedGroups)
+      s.delete(value)
+      setFocusedGroups(s)
+    } else {
+      const s = new Set(focusedGroups)
+      s.add(value)
+      setFocusedGroups(s)
+    }
+  }
+
+  const legend = createLegend({
+    chartProps,
+    interactivity: { focusedGroups, handleIndicatorMouseDown: handleLegendMouseDown },
+  })
   return (
     <div style={{ margin: "auto", width: "80%", height: "100%" }}>
       {svg}
