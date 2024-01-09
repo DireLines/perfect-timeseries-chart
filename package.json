@@ -1,6 +1,6 @@
 {
   "name": "perfect-timeseries-chart",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Perfect Timeseries Chart",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

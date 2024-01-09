@@ -85,9 +85,10 @@ const timeFormats = {
   [3 * hour]: "h:m",
   [12 * hour]: "h:m",
   [day]: "w d",
-  [month]: "y-M",
-  [3 * month]: "y-M",
-  [6 * month]: "y-M",
+  [week]: "w d",
+  [month]: "M",
+  [3 * month]: "M",
+  [6 * month]: "M",
   [year]: "y",
   [5 * year]: "y",
   [10 * year]: "y",
@@ -98,6 +99,20 @@ function format_two_digits(n) {
 }
 const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 const weekdayShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const monthNames = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+]
 const formatDate = curry((formatString: any, date: number | Date) => {
   let s = formatString
   const d = new Date(date)
@@ -105,7 +120,7 @@ const formatDate = curry((formatString: any, date: number | Date) => {
     mil: d.getMilliseconds(),
     y: d.getFullYear(),
     Y: d.getFullYear(),
-    M: format_two_digits(d.getMonth() + 1),
+    M: format_two_digits(monthNames[d.getMonth()]),
     d: format_two_digits(d.getDate()),
     D: format_two_digits(d.getDate()),
     h: format_two_digits(d.getHours()),

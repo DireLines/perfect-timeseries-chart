@@ -498,15 +498,7 @@ const createLegend = ({
   interactivity: any
 }) => {
   const { data, columnName, start, end, logLevelPresetColors } = chartProps
-  const {
-    focusedGroups,
-    handleIndicatorMouseDown,
-    handleIndicatorMouseMove,
-    handleIndicatorMouseLeave,
-    handleTextMouseDown,
-    handleTextMouseMove,
-    handleTextMouseLeave,
-  } = interactivity
+  const { focusedGroups, handleIndicatorMouseDown } = interactivity
   const dataInRange = data
     .filter(({ time }) => toEpochMs(start) <= toEpochMs(time) && toEpochMs(end) >= toEpochMs(time))
     .map(({ time, counts }) => ({ time, counts: filter((v) => v > 0, counts) }))
