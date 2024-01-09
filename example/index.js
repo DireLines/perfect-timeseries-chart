@@ -95,12 +95,7 @@ const Dashboard = () => {
         }}
         columnName="color"
       />
-      <TimeSeriesChart
-        data={bigData}
-        start={range.start}
-        end={range.end}
-        onTimeRangeChange={() => {}}
-      />
+      <TimeSeriesChart data={bigData} />
     </>
   )
 }

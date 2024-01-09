@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { sum, isNil, filter } from "ramda"
+import { sum, isNil, filter, mapObjIndexed } from "ramda"
 import { colorHash, invertColor } from "./color.js"
-import { closestNumber, closestTimeIncrement, getDisplayInterval, timeLabel } from "./timeUnits.js"
+import {
+  closestNumber,
+  closestTimeIncrement,
+  getDisplayInterval,
+  timeLabel,
+  getTimeMarkers,
+} from "./timeUnits.js"
 import Tooltip from "@mui/material/Tooltip"
 const min = Math.min
 const max = Math.max
@@ -282,6 +288,9 @@ const createSvg = ({
   const pixelToTime = (pixel: number) =>
     Math.round(((pixel - columnPadX) / dispWidth) * (dispEndTime - dispStartTime)) + dispStartTime
   const indicatorColor = invertColor(backgroundColor)
+  const timeMarkers = getTimeMarkers(dispStartTime, dispEndTime)
+  const timestamps = new Set(data.map((x) => toEpochMs(x.time)))
+  console.log(timestamps)
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
       {/* Background rectangle */}
@@ -378,32 +387,7 @@ const createSvg = ({
         return (
           <g key={index} transform={`translate(${x}, 0)`}>
             {rects}
-            {toEpochMs(point.time) % getDisplayInterval(binSizeMs) === 0 ? (
-              <>
-                <line
-                  stroke={indicatorColor}
-                  x1={0}
-                  y1={height - columnPadY + 8}
-                  x2={0}
-                  y2={height - columnPadY}
-                />
-                <text
-                  x={0}
-                  y={height - 5}
-                  textAnchor="middle"
-                  fontSize="16"
-                  fill={indicatorColor}
-                  style={{
-                    WebkitUserSelect: "none",
-                    MozUserSelect: "none",
-                    msUserSelect: "none",
-                    userSelect: "none",
-                  }}
-                >
-                  {timeLabel(point.time, binSizeMs, index)}
-                </text>
-              </>
-            ) : (
+            {
               <line
                 stroke={indicatorColor}
                 x1={0}
@@ -411,10 +395,45 @@ const createSvg = ({
                 x2={0}
                 y2={height - columnPadY}
               />
-            )}
+            }
           </g>
         )
       })}
+      {/* horizontal axis markers */}
+      {Object.values(
+        mapObjIndexed((value, timestamp) => {
+          const t = toEpochMs(parseInt(timestamp))
+          const x = timeToPixel(t)
+          return (
+            <>
+              {t % binSizeMs === 0 && (
+                <line
+                  stroke={indicatorColor}
+                  x1={x}
+                  y1={height - columnPadY + 8}
+                  x2={x}
+                  y2={height - columnPadY}
+                />
+              )}
+              <text
+                x={x}
+                y={height - 5}
+                textAnchor="middle"
+                fontSize="16"
+                fill={indicatorColor}
+                style={{
+                  WebkitUserSelect: "none",
+                  MozUserSelect: "none",
+                  msUserSelect: "none",
+                  userSelect: "none",
+                }}
+              >
+                {value}
+              </text>
+            </>
+          )
+        }, timeMarkers)
+      )}
       {/* Drag selection */}
       {isDragging && dragStart !== null && dragEnd !== null && (
         <>

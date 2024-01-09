@@ -21,7 +21,6 @@ const allowedBarWidths = [
   5 * second,
   30 * second,
   minute,
-  2 * minute,
   5 * minute,
   10 * minute,
   30 * minute,
@@ -32,7 +31,6 @@ const allowedBarWidths = [
   day,
   2 * day,
   week,
-  2 * week,
   month,
   2 * month,
   6 * month,
@@ -51,7 +49,6 @@ const allowedDisplayIntervals = [
   5 * second,
   30 * second,
   minute,
-  2 * minute,
   5 * minute,
   10 * minute,
   30 * minute,
@@ -73,21 +70,27 @@ const allowedDisplayIntervals = [
   100 * year,
 ]
 const timeFormats = {
-  [10 * millisecond]: "m:s.mil",
-  [100 * millisecond]: "h:m:s",
-  [second]: "h:m:s",
-  [5 * second]: ["h:m", "h:m:s"],
-  [10 * second]: "h:m",
+  [10 * millisecond]: ".mil",
+  [100 * millisecond]: ".mil",
+  [500 * millisecond]: ".mil",
+  [second]: ":s",
+  [5 * second]: ":s",
+  [15 * second]: ":s",
+  [30 * second]: ":s",
   [minute]: "h:m",
+  [5 * minute]: "h:m",
+  [15 * minute]: "h:m",
+  [30 * minute]: "h:m",
   [hour]: "h:m",
-  [12 * hour]: ["w d", "h:m"],
-  21600000: ["w d", "h:m"],
-  604800000: "y-M",
-  [day]: ["y-M-d", "w d"],
-  [week]: "y-M-d",
+  [3 * hour]: "h:m",
+  [12 * hour]: "h:m",
+  [day]: "w d",
   [month]: "y-M",
+  [3 * month]: "y-M",
   [6 * month]: "y-M",
   [year]: "y",
+  [5 * year]: "y",
+  [10 * year]: "y",
 }
 
 function format_two_digits(n) {
@@ -102,7 +105,7 @@ const formatDate = curry((formatString: any, date: number | Date) => {
     mil: d.getMilliseconds(),
     y: d.getFullYear(),
     Y: d.getFullYear(),
-    M: format_two_digits(d.getMonth()),
+    M: format_two_digits(d.getMonth() + 1),
     d: format_two_digits(d.getDate()),
     D: format_two_digits(d.getDate()),
     h: format_two_digits(d.getHours()),
@@ -153,3 +156,63 @@ export const closestNumber = (n: number, nums: number[]) => {
 }
 
 export const closestTimeIncrement = (n) => closestNumber(n, allowedBarWidths)
+const nearestMultipleBelow = (value, step) => Math.floor(value / step) * step
+const startOfDayLocalTime = (timestamp) => {
+  const date = new Date(timestamp)
+  const hoursOffset = Math.floor(date.getTimezoneOffset() / 60)
+  const minutesOffset = date.getTimezoneOffset() % 60
+  const tz = `GMT-${hoursOffset}:${minutesOffset}`
+  const ymd = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${tz}`
+  return new Date(ymd).getTime()
+}
+const startOfMonthLocalTime = (timestamp) => {
+  const date = new Date(timestamp)
+  const hoursOffset = Math.floor(date.getTimezoneOffset() / 60)
+  const minutesOffset = date.getTimezoneOffset() % 60
+  const tz = `GMT-${hoursOffset}:${minutesOffset}`
+  const ymd = `${date.getFullYear()}-${date.getMonth() + 1}-01 ${tz}`
+  return new Date(ymd).getTime()
+}
+const startOfYearLocalTime = (timestamp) => {
+  const date = new Date(timestamp)
+  const hoursOffset = Math.floor(date.getTimezoneOffset() / 60)
+  const minutesOffset = date.getTimezoneOffset() % 60
+  const tz = `GMT-${hoursOffset}:${minutesOffset}`
+  const ymd = `${date.getFullYear()}-01-01 ${tz}`
+  return new Date(ymd).getTime()
+}
+export const getTimeMarkers = (startTimeMs: number, endTimeMs: number) => {
+  const timezoneOffsetMs = new Date().getTimezoneOffset() * 1000 * 60
+  const timeSpan = Math.abs(endTimeMs - startTimeMs)
+  const result: any = {}
+  for (const timeInterval in timeFormats) {
+    const timeIntervalMs = parseInt(timeInterval)
+    if (timeSpan > 20 * timeIntervalMs) {
+      continue
+    }
+
+    let timestamp =
+      nearestMultipleBelow(startTimeMs - timezoneOffsetMs, timeIntervalMs) + timezoneOffsetMs
+    const format = formatDate(timeFormats[timeInterval])
+    while (timestamp <= endTimeMs) {
+      let timestampToDisplay = timestamp
+      if (timeIntervalMs >= day) {
+        //anchor to start of day
+        timestampToDisplay = startOfDayLocalTime(timestamp)
+      }
+      if (timeIntervalMs >= month) {
+        //anchor to start of day
+        timestampToDisplay = startOfMonthLocalTime(timestamp)
+      }
+      if (timeIntervalMs >= year) {
+        //anchor to start of day
+        timestampToDisplay = startOfYearLocalTime(timestamp)
+      }
+      if (timestamp >= startTimeMs) {
+        result[timestamp] = format(timestamp)
+      }
+      timestamp += timeIntervalMs
+    }
+  }
+  return result
+}
