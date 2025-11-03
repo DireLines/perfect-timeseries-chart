@@ -135,7 +135,7 @@ const Dashboard = () => {
 }
 ReactDOM.render(
   <>
-    <TimeSeriesChart data={logData} />
+    <TimeSeriesChart data={logData} columnName="level" />
     <Dashboard />
   </>,
   document.getElementById("app")
